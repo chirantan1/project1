@@ -17,7 +17,7 @@ const PatientDashboard = () => {
     const fetchUserData = async () => {
       try {
         const token = localStorage.getItem("token");
-        const res = await axios.get("http://localhost:5000/api/auth/me", {
+        const res = await axios.get("https://project1-backend-d55g.onrender.com/api/auth/me", {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -36,7 +36,7 @@ const PatientDashboard = () => {
     const fetchDoctors = async () => {
       try {
         setLoadingDoctors(true);
-        const res = await axios.get("http://localhost:5000/api/auth/doctors");
+        const res = await axios.get("https://project1-backend-d55g.onrender.com/api/auth/doctors");
         console.log("Doctors response:", res.data);
         setDoctors(res.data.data || []);
       } catch (err) {
@@ -56,7 +56,7 @@ const PatientDashboard = () => {
         setLoadingAppointments(true);
         const token = localStorage.getItem("token");
         const res = await axios.get(
-          "http://localhost:5000/api/appointments/patient",
+          "https://project1-backend-d55g.onrender.com/api/appointments/patient",
           {
             headers: {
               Authorization: `Bearer ${token}`,
@@ -87,7 +87,7 @@ const PatientDashboard = () => {
     try {
       const token = localStorage.getItem("token");
       await axios.delete(
-        `http://localhost:5000/api/appointments/${appointmentId}`,
+        `https://project1-backend-d55g.onrender.com/api/appointments/${appointmentId}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
