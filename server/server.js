@@ -16,16 +16,28 @@ mongoose.connect(process.env.MONGO_URI, {
   process.exit(1); // Exit process if DB connection fails
 });
 
-// Middleware
+// ✅ Dynamic CORS setup
+const allowedOrigins = [
+  'http://localhost:3000',
+  'http://192.168.56.1:3000'
+];
+
 app.use(cors({
-  origin: 'http://localhost:3000',
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error(`❌ Not allowed by CORS: ${origin}`));
+    }
+  },
   credentials: true
 }));
+
 app.use(express.json());
 
 // Routes
 const authRoutes = require('./routes/auth');
-const appointmentRoutes = require('./routes/appointments'); // Make sure this file exists and exports router
+const appointmentRoutes = require('./routes/appointments'); // Ensure this exists and exports a router
 
 app.use('/api/auth', authRoutes);
 app.use('/api/appointments', appointmentRoutes);
