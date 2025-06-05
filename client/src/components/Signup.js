@@ -80,7 +80,10 @@ const Signup = () => {
         submitData.bio = formData.bio;
       }
 
-      const response = await axios.post("http://localhost:5000/api/auth/signup", submitData);
+      const response = await axios.post(
+        "https://project1-backend-d55g.onrender.com/api/auth/signup",
+        submitData
+      );
 
       setSuccess("Registration successful! Redirecting...");
       localStorage.setItem("token", response.data.token);
