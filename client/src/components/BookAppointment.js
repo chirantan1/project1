@@ -3,9 +3,9 @@ import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./BookAppointment.css";
 
-// ✅ Axios instance outside the component (reused across components)
+// ✅ Axios instance using production baseURL
 const api = axios.create({
-  baseURL: "http://localhost:5000/api",
+  baseURL: "https://project1-backend-d55g.onrender.com/api",
   headers: {
     "Content-Type": "application/json"
   }
@@ -14,7 +14,7 @@ const api = axios.create({
 const BookAppointment = () => {
   const [formData, setFormData] = useState({ 
     date: "", 
-    time: "10:00",  // 24-hour format
+    time: "10:00",
     symptoms: "" 
   });
   const [doctor, setDoctor] = useState(null);
@@ -26,7 +26,6 @@ const BookAppointment = () => {
 
   useEffect(() => {
     const fetchDoctorDetails = async () => {
-      // ✅ Dynamically set Authorization token here
       api.defaults.headers.Authorization = `Bearer ${localStorage.getItem("token")}`;
 
       if (location.state?.doctorId) {
@@ -42,7 +41,7 @@ const BookAppointment = () => {
     };
 
     fetchDoctorDetails();
-  }, [location.state]);  // ✅ No eslint warning
+  }, [location.state]);
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -59,7 +58,6 @@ const BookAppointment = () => {
         throw new Error("All fields are required");
       }
 
-      // ✅ Ensure token is set again before making API request
       api.defaults.headers.Authorization = `Bearer ${localStorage.getItem("token")}`;
 
       const response = await api.post("/appointments", {

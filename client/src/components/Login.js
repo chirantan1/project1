@@ -19,7 +19,7 @@ const Login = () => {
 
     try {
       const res = await axios.post(
-        "http://localhost:5000/api/auth/login",
+        "https://project1-backend-d55g.onrender.com/api/auth/login",
         formData
       );
 
