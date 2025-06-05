@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 
 const app = express();
 
-// Connect to MongoDB
+// ✅ MongoDB Connection
 mongoose.connect(process.env.MONGO_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
@@ -13,13 +13,14 @@ mongoose.connect(process.env.MONGO_URI, {
 .then(() => console.log('✅ MongoDB Connected'))
 .catch(err => {
   console.error('❌ MongoDB Connection Error:', err.message);
-  process.exit(1); // Exit process if DB connection fails
+  process.exit(1);
 });
 
-// ✅ Dynamic CORS setup
+// ✅ CORS Configuration (Local + Deployed Frontend)
 const allowedOrigins = [
   'http://localhost:3000',
-  'http://192.168.56.1:3000'
+  'http://192.168.56.1:3000',
+  'https://project1-3jvu.onrender.com'
 ];
 
 app.use(cors({
@@ -35,27 +36,29 @@ app.use(cors({
 
 app.use(express.json());
 
-// Routes
+// ✅ Routes
 const authRoutes = require('./routes/auth');
-const appointmentRoutes = require('./routes/appointments'); // Ensure this exists and exports a router
+const appointmentRoutes = require('./routes/appointments');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/appointments', appointmentRoutes);
 
-// Root route
+// ✅ Root route
 app.get('/', (req, res) => {
   res.send('API is running...');
 });
 
-// Global Error Handler
+// ✅ Global Error Handler
 app.use((err, req, res, next) => {
   console.error('Global Error:', err.stack);
   res.status(500).json({ 
     success: false, 
-    message: 'Internal Server Error' 
+    message: err.message || 'Internal Server Error' 
   });
 });
 
-// Start Server
+// ✅ Start Server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Server running on http://localhost:${PORT}`));
+app.listen(PORT, () =>
+  console.log(`🚀 Server running on http://localhost:${PORT}`)
+);
