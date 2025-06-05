@@ -2,11 +2,17 @@ import React, { useState } from "react";
 import axios from "axios";
 import { useNavigate, Link } from "react-router-dom";
 import "./Login.css";
+import loginBg from "../asset/signup.jpg"; // ✅ Adjust the path if needed
 
 const Login = () => {
   const [formData, setFormData] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showAdminInput, setShowAdminInput] = useState(false);
+  const [adminPass, setAdminPass] = useState("");
+  const [adminError, setAdminError] = useState("");
+  const [showAnimation, setShowAnimation] = useState(false);
+
   const navigate = useNavigate();
 
   const handleChange = (e) =>
@@ -48,8 +54,40 @@ const Login = () => {
     }
   };
 
+  const handleAdminSubmit = () => {
+    if (adminPass === "admin") {
+      setShowAnimation(true);
+      setTimeout(() => {
+        window.open("https://admin-1-5zv8.onrender.com", "_blank");
+        setShowAdminInput(false);
+        setAdminPass("");
+        setShowAnimation(false);
+        setAdminError("");
+      }, 3000);
+    } else {
+      setAdminError("Incorrect password. Try again.");
+    }
+  };
+
   return (
-    <div className="login-page">
+    <div
+      className="login-page"
+      style={{
+        backgroundImage: `url(${loginBg})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "flex-start",
+        padding: "2rem",
+      }}
+    >
+      <h1 className="main-heading">
+        Patient Management System with Integrated Disease Assistance
+      </h1>
+
       <div className="login-container">
         <h2>Login</h2>
 
@@ -90,7 +128,43 @@ const Login = () => {
         <p className="register-link">
           Don't have an account? <Link to="/signup">Sign up here</Link>
         </p>
+
+        <div className="admin-access">
+          <h3>Admin Dashboard (Official Use Only)</h3>
+          <button className="admin-btn" onClick={() => setShowAdminInput(true)}>
+            Access Admin Dashboard
+          </button>
+
+          {showAdminInput && (
+            <div className="otp-modal">
+              <h4>Admin Access</h4>
+              <input
+                type="password"
+                value={adminPass}
+                placeholder="Enter admin password"
+                onChange={(e) => setAdminPass(e.target.value)}
+              />
+              <button className="verify-btn" onClick={handleAdminSubmit}>
+                Verify
+              </button>
+              {adminError && <p className="error-text">{adminError}</p>}
+              <button
+                className="close-btn"
+                onClick={() => setShowAdminInput(false)}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+        </div>
       </div>
+
+      {showAnimation && (
+        <div className="animation-overlay">
+          <div className="loader-circle"></div>
+          <p>Verifying Admin Access...</p>
+        </div>
+      )}
     </div>
   );
 };

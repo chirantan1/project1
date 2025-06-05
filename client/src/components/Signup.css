@@ -1,4 +1,5 @@
-.signup-page {
+/* Variables */
+:root {
   --primary-color: #4361ee;
   --primary-dark: #3a56d5;
   --secondary-color: #3f37c9;
@@ -12,36 +13,55 @@
   --transition: all 0.3s ease;
 }
 
-.signup-page * {
+/* Reset and base styles */
+* {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
-/* Container Styles */
-.signup-page .signup-container {
+/* Page Layout */
+.signup-page {
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+  background-image: url('../asset/signup.jpg'); /* Change path as needed */
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  padding: 2rem;
+}
+
+/* Dark overlay for readability */
+
+
+/* Ensure all content is above overlay */
+.signup-page * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Container */
+.signup-container {
   max-width: 600px;
+  width: 100%;
   margin: 2rem auto;
   padding: 2.5rem;
   background: white;
   border-radius: var(--border-radius);
   box-shadow: var(--box-shadow);
   animation: fadeIn 0.6s ease-out;
+  text-align: left;
 }
 
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.signup-page .signup-container h2 {
+/* Heading */
+.signup-container h2 {
   color: var(--dark-color);
   text-align: center;
   margin-bottom: 1.8rem;
@@ -50,7 +70,7 @@
   position: relative;
 }
 
-.signup-page .signup-container h2::after {
+.signup-container h2::after {
   content: '';
   position: absolute;
   bottom: -10px;
@@ -62,52 +82,52 @@
   border-radius: 2px;
 }
 
-/* Form Styles */
-.signup-page .signup-form {
+/* Form */
+.signup-form {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
 }
 
-.signup-page .form-group {
+.form-group {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-.signup-page .form-group label {
+.form-group label {
   font-weight: 600;
   color: var(--dark-color);
   font-size: 0.95rem;
 }
 
-.signup-page .form-group input,
-.signup-page .form-group select,
-.signup-page .form-group textarea {
+.form-group input,
+.form-group select,
+.form-group textarea {
   padding: 0.8rem 1rem;
   border: 2px solid #e9ecef;
   border-radius: var(--border-radius);
   font-size: 1rem;
-  transition: var(--transition);
   background-color: #f8f9fa;
+  transition: var(--transition);
 }
 
-.signup-page .form-group input:focus,
-.signup-page .form-group select:focus,
-.signup-page .form-group textarea:focus {
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
   outline: none;
   border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
   background-color: white;
 }
 
-.signup-page .form-group textarea {
+.form-group textarea {
   resize: vertical;
   min-height: 100px;
 }
 
-/* Button Styles */
-.signup-page .submit-btn {
+/* Button */
+.submit-btn {
   background-color: var(--primary-color);
   color: white;
   border: none;
@@ -122,44 +142,44 @@
   letter-spacing: 0.5px;
 }
 
-.signup-page .submit-btn:hover {
+.submit-btn:hover {
   background-color: var(--primary-dark);
   transform: translateY(-2px);
   box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
 }
 
-.signup-page .submit-btn:active {
+.submit-btn:active {
   transform: translateY(0);
 }
 
-.signup-page .submit-btn:disabled {
+.submit-btn:disabled {
   background-color: #cccccc;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
 }
 
-/* Link Styles */
-.signup-page .login-link {
+/* Link */
+.login-link {
   text-align: center;
   margin-top: 1.5rem;
   color: var(--dark-color);
 }
 
-.signup-page .login-link a {
+.login-link a {
   color: var(--primary-color);
   text-decoration: none;
   font-weight: 600;
   transition: var(--transition);
 }
 
-.signup-page .login-link a:hover {
+.login-link a:hover {
   color: var(--secondary-color);
   text-decoration: underline;
 }
 
-/* Message Styles */
-.signup-page .error-text {
+/* Messages */
+.error-text {
   color: var(--error-color);
   background-color: rgba(255, 51, 51, 0.1);
   padding: 0.8rem 1rem;
@@ -170,7 +190,7 @@
   animation: shake 0.5s ease-in-out;
 }
 
-.signup-page .success-text {
+.success-text {
   color: var(--success-color);
   background-color: rgba(75, 181, 67, 0.1);
   padding: 0.8rem 1rem;
@@ -180,45 +200,21 @@
   border-left: 4px solid var(--success-color);
 }
 
-@keyframes shake {
-  0%, 100% { transform: translateX(0); }
-  20%, 60% { transform: translateX(-5px); }
-  40%, 80% { transform: translateX(5px); }
+/* Form validation highlight */
+.form-group input:not(:placeholder-shown):valid,
+.form-group select:not(:placeholder-shown):valid,
+.form-group textarea:not(:placeholder-shown):valid {
+  border-color: var(--success-color);
 }
 
-/* Responsive Design */
-@media (max-width: 768px) {
-  .signup-page .signup-container {
-    margin: 1rem;
-    padding: 1.5rem;
-  }
+.form-group input:not(:placeholder-shown):invalid,
+.form-group select:not(:placeholder-shown):invalid,
+.form-group textarea:not(:placeholder-shown):invalid {
+  border-color: var(--error-color);
 }
 
-@media (max-width: 480px) {
-  .signup-page .signup-container {
-    padding: 1.2rem;
-  }
-  
-  .signup-page .signup-container h2 {
-    font-size: 1.5rem;
-  }
-  
-  .signup-page .submit-btn {
-    padding: 0.8rem;
-  }
-}
-
-/* Special Effects */
-.signup-page .form-group input:not(:placeholder-shown):valid {
-  border-color: #4bb543;
-}
-
-.signup-page .form-group input:not(:placeholder-shown):invalid {
-  border-color: #ff3333;
-}
-
-/* Role Selection Highlight */
-.signup-page select#role {
+/* Role select styling */
+select#role {
   appearance: none;
   background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
   background-repeat: no-repeat;
@@ -228,9 +224,27 @@
   cursor: pointer;
 }
 
-/* Doctor Fields Animation */
-.signup-page .signup-form > div:nth-child(n+6) {
+/* Doctor Fields animation */
+.signup-form > div:nth-child(n+6) {
   animation: slideUp 0.4s ease-out;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-5px); }
+  40%, 80% { transform: translateX(5px); }
 }
 
 @keyframes slideUp {
@@ -241,5 +255,27 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .signup-container {
+    margin: 1rem;
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .signup-container {
+    padding: 1.2rem;
+  }
+  
+  .signup-container h2 {
+    font-size: 1.5rem;
+  }
+  
+  .submit-btn {
+    padding: 0.8rem;
   }
 }
