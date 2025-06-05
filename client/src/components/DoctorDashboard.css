@@ -1,0 +1,309 @@
+/* Global Reset */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.doctor-dashboard {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  padding: 2rem;
+  background: linear-gradient(135deg, #fdfcfb, #e2d1c3);
+  min-height: 100vh;
+  color: #333;
+}
+
+/* Header */
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+}
+
+.dashboard-header h2 {
+  font-size: 2rem;
+  color: #4a148c;
+}
+
+.welcome-message {
+  font-size: 1rem;
+  color: #555;
+}
+
+.logout-btn {
+  padding: 0.6rem 1.2rem;
+  background-color: #e53935;
+  color: white;
+  border: none;
+  border-radius: 20px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: background 0.3s ease;
+}
+
+.logout-btn:hover {
+  background-color: #b71c1c;
+}
+
+/* Filters */
+.dashboard-controls {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 1.5rem;
+}
+
+.filter-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  justify-content: center;
+}
+
+.filter-controls input,
+.filter-controls select {
+  padding: 0.5rem 1rem;
+  border: 1px solid #ccc;
+  border-radius: 15px;
+  font-size: 0.95rem;
+}
+
+/* Messages */
+.error-message,
+.success-message {
+  text-align: center;
+  margin-bottom: 1rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  font-weight: 500;
+  width: fit-content;
+  margin-inline: auto;
+}
+
+.error-message {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.success-message {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+/* Summary Cards */
+.appointments-summary {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 2rem;
+}
+
+.summary-card {
+  background: #ffffff;
+  padding: 1.2rem;
+  border-radius: 20px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  flex: 1;
+  min-width: 150px;
+  max-width: 200px;
+}
+
+.summary-card h4 {
+  color: #6a1b9a;
+  font-size: 1rem;
+}
+
+.summary-card p {
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: #333;
+}
+
+/* Appointments List */
+.appointments-list {
+  display: grid;
+  gap: 1.2rem;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+}
+
+.appt-card {
+  background: #fafafa;
+  padding: 1rem;
+  border-radius: 18px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease;
+}
+
+.appt-card:hover {
+  transform: translateY(-4px);
+}
+
+.appt-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.status-badge {
+  padding: 0.3rem 0.7rem;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.status-pending {
+  background-color: #fff3e0;
+  color: #ef6c00;
+}
+
+.status-confirmed {
+  background-color: #e3f2fd;
+  color: #1e88e5;
+}
+
+.status-completed {
+  background-color: #e8f5e9;
+  color: #43a047;
+}
+
+.status-cancelled {
+  background-color: #ffebee;
+  color: #d32f2f;
+}
+
+.appt-card-body p {
+  margin: 0.3rem 0;
+  color: #555;
+}
+
+.appt-card-footer {
+  margin-top: 0.8rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.appt-card-footer button {
+  flex: 1;
+  padding: 0.4rem 0.6rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.details-btn {
+  background-color: #6a1b9a;
+  color: white;
+}
+
+.accept-btn {
+  background-color: #43a047;
+  color: white;
+}
+
+.cancel-btn {
+  background-color: #e53935;
+  color: white;
+}
+
+.complete-btn {
+  background-color: #1e88e5;
+  color: white;
+}
+
+.appt-card-footer button:hover {
+  opacity: 0.9;
+}
+
+/* Pagination */
+.pagination {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.pagination button {
+  padding: 0.4rem 0.9rem;
+  font-size: 0.9rem;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  background: white;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.pagination button.active {
+  background-color: #6a1b9a;
+  color: white;
+  font-weight: bold;
+}
+
+.pagination button:hover:not(.active) {
+  background-color: #eee;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 999;
+}
+
+.modal-content {
+  background-color: white;
+  padding: 2rem;
+  border-radius: 20px;
+  max-width: 500px;
+  width: 90%;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+  animation: fadeIn 0.3s ease;
+}
+
+.modal-content h3 {
+  color: #4a148c;
+  margin-bottom: 1rem;
+}
+
+.modal-body p {
+  margin-bottom: 0.6rem;
+  color: #444;
+}
+
+.close-modal {
+  background-color: #6a1b9a;
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 12px;
+  margin-top: 1rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-20px);
+  } 
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

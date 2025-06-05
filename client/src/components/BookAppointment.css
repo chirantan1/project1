@@ -1,0 +1,215 @@
+.book-appointment-container {
+  --primary-color: #4361ee;
+  --primary-dark: #3a56d5;
+  --secondary-color: #3f37c9;
+  --accent-color: #4895ef;
+  --light-color: #f8f9fa;
+  --dark-color: #212529;
+  --success-color: #4bb543;
+  --error-color: #ff3333;
+  --border-radius: 12px;
+  --box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  --transition: all 0.3s ease;
+  max-width: 600px;
+  margin: 2rem auto;
+  padding: 2.5rem;
+  background: white;
+  border-radius: var(--border-radius);
+  box-shadow: var(--box-shadow);
+  animation: fadeIn 0.6s ease-out;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: var(--dark-color);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.book-appointment-container .title {
+  text-align: center;
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1.8rem;
+  position: relative;
+}
+
+.book-appointment-container .title::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 4px;
+  background: var(--primary-color);
+  border-radius: 2px;
+}
+
+.doctor-info {
+  background-color: var(--light-color);
+  padding: 1rem 1.5rem;
+  border-radius: var(--border-radius);
+  margin-bottom: 1.8rem;
+  box-shadow: inset 0 0 8px rgba(67, 97, 238, 0.1);
+}
+
+.doctor-info h3 {
+  margin-bottom: 0.3rem;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.doctor-info p {
+  margin: 0.2rem 0;
+  font-size: 0.95rem;
+  color: var(--dark-color);
+}
+
+.appointment-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  text-align: left;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--dark-color);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 0.8rem 1rem;
+  border: 2px solid #e9ecef;
+  border-radius: var(--border-radius);
+  font-size: 1rem;
+  background-color: var(--light-color);
+  transition: var(--transition);
+  font-family: inherit;
+  color: var(--dark-color);
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
+  background-color: white;
+}
+
+.form-group textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+.submit-btn {
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  padding: 1rem;
+  border-radius: var(--border-radius);
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition);
+  margin-top: 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.submit-btn:hover {
+  background-color: var(--primary-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+}
+
+.submit-btn:active {
+  transform: translateY(0);
+}
+
+.submit-btn:disabled {
+  background-color: #cccccc;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Message styles */
+.message {
+  margin-top: 1.5rem;
+  padding: 0.8rem 1rem;
+  border-radius: var(--border-radius);
+  text-align: center;
+  font-weight: 600;
+  user-select: none;
+}
+
+.message.error {
+  color: var(--error-color);
+  background-color: rgba(255, 51, 51, 0.1);
+  border-left: 4px solid var(--error-color);
+  animation: shake 0.5s ease-in-out;
+}
+
+.message.success {
+  color: var(--success-color);
+  background-color: rgba(75, 181, 67, 0.1);
+  border-left: 4px solid var(--success-color);
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-5px); }
+  40%, 80% { transform: translateX(5px); }
+}
+
+/* Input validation border color */
+.form-group input:not(:placeholder-shown):valid,
+.form-group select:not(:placeholder-shown):valid,
+.form-group textarea:not(:placeholder-shown):valid {
+  border-color: var(--success-color);
+}
+
+.form-group input:not(:placeholder-shown):invalid,
+.form-group select:not(:placeholder-shown):invalid,
+.form-group textarea:not(:placeholder-shown):invalid {
+  border-color: var(--error-color);
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+  .book-appointment-container {
+    margin: 1rem;
+    padding: 1.5rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .book-appointment-container {
+    padding: 1.2rem;
+  }
+
+  .book-appointment-container .title {
+    font-size: 1.5rem;
+  }
+
+  .submit-btn {
+    padding: 0.8rem;
+  }
+}
