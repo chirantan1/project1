@@ -21,7 +21,7 @@ const DoctorDashboard = () => {
 
   // Configure axios instance
   const api = axios.create({
-    baseURL: "http://localhost:5000/api",
+    baseURL: "https://project1-backend-d55g.onrender.com/api",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${localStorage.getItem("token")}`
@@ -43,9 +43,9 @@ const DoctorDashboard = () => {
     try {
       setLoading(true);
       setError("");
-      
+
       const response = await api.get("/appointments/doctor");
-      
+
       if (response.data?.success) {
         setAppointments(response.data.data || []);
       } else {
@@ -70,11 +70,11 @@ const DoctorDashboard = () => {
       setLoading(true);
       setError("");
       setSuccess("");
-      
+
       const response = await api.put(`/appointments/${id}/status`, {
         status: newStatus
       });
-      
+
       if (response.data.success) {
         setSuccess("Appointment updated successfully");
         fetchAppointments();
@@ -104,26 +104,26 @@ const DoctorDashboard = () => {
   // Filter appointments
   useEffect(() => {
     let filtered = [...appointments];
-    
+
     if (statusFilter) {
       filtered = filtered.filter(a => a.status === statusFilter);
     }
-    
+
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(a => 
+      filtered = filtered.filter(a =>
         a.patient?.name?.toLowerCase().includes(term) ||
         a.symptoms?.toLowerCase().includes(term)
       );
     }
-    
+
     if (selectedDate) {
       const selected = new Date(selectedDate).toDateString();
-      filtered = filtered.filter(a => 
+      filtered = filtered.filter(a =>
         new Date(a.date).toDateString() === selected
       );
     }
-    
+
     setFilteredAppointments(filtered);
     setPage(1);
   }, [appointments, statusFilter, searchTerm, selectedDate]);
@@ -214,24 +214,24 @@ const DoctorDashboard = () => {
                   {appt.status}
                 </span>
               </div>
-              
+
               <div className="appt-card-body">
                 <p><strong>Date:</strong> {new Date(appt.date).toLocaleDateString()}</p>
                 <p><strong>Time:</strong> {appt.time || "N/A"}</p>
                 <p><strong>Symptoms:</strong> {appt.symptoms || "N/A"}</p>
               </div>
-              
+
               <div className="appt-card-footer">
-                <button 
+                <button
                   className="details-btn"
                   onClick={() => setModalData(appt)}
                 >
                   Details
                 </button>
-                
+
                 {appt.status === "pending" && (
                   <>
-                    <button 
+                    <button
                       className="accept-btn"
                       onClick={() => handleStatusChange(appt._id, "confirmed")}
                       disabled={loading}
@@ -247,7 +247,7 @@ const DoctorDashboard = () => {
                     </button>
                   </>
                 )}
-                
+
                 {appt.status === "confirmed" && (
                   <button
                     className="complete-btn"
@@ -266,13 +266,13 @@ const DoctorDashboard = () => {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="pagination">
-          <button 
-            onClick={() => setPage(p => Math.max(p - 1, 1))} 
+          <button
+            onClick={() => setPage(p => Math.max(p - 1, 1))}
             disabled={page === 1}
           >
             Previous
           </button>
-          
+
           {Array.from({ length: totalPages }, (_, i) => (
             <button
               key={i}
@@ -282,7 +282,7 @@ const DoctorDashboard = () => {
               {i + 1}
             </button>
           ))}
-          
+
           <button
             onClick={() => setPage(p => Math.min(p + 1, totalPages))}
             disabled={page === totalPages}
@@ -304,15 +304,15 @@ const DoctorDashboard = () => {
               <p><strong>Time:</strong> {modalData.time}</p>
               <p><strong>Symptoms:</strong> {modalData.symptoms}</p>
               <p>
-                <strong>Status:</strong> 
+                <strong>Status:</strong>
                 <span className={`status-${modalData.status}`}>
                   {modalData.status}
                 </span>
               </p>
               {modalData.notes && <p><strong>Notes:</strong> {modalData.notes}</p>}
             </div>
-            <button 
-              className="close-modal" 
+            <button
+              className="close-modal"
               onClick={() => setModalData(null)}
             >
               Close
