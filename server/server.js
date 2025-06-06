@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const doctorRoutes = require('./routes/doctorRoutes');
 const cors = require('cors');
 const mongoose = require('mongoose');
 
@@ -42,6 +43,7 @@ const appointmentRoutes = require('./routes/appointments');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/appointments', appointmentRoutes);
+app.use('/api/doctors', doctorRoutes);
 
 // ✅ Root route
 app.get('/', (req, res) => {

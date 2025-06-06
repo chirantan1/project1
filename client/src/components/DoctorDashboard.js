@@ -405,8 +405,8 @@ const DoctorDashboard = () => {
                 <h2>Medical Prescription</h2>
                 <div className="clinic-info">
                   <p>Healthcare Clinic</p>
-                  <p>123 Medical Drive, City</p>
-                  <p>Phone: (123) 456-7890</p>
+                  <p>Adisaptogram,Hooghly</p>
+                  <p>Phone:6294505905</p>
                 </div>
                 <p className="prescription-date">Date: {new Date().toLocaleDateString()}</p>
               </div>
