@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { usePDF } from "react-to-pdf";
 import "./DoctorDashboard.css";
 
 const DoctorDashboard = () => {
@@ -16,8 +17,18 @@ const DoctorDashboard = () => {
   const [page, setPage] = useState(1);
   const limit = 6;
   const [user, setUser] = useState(null);
+  const [showPrescriptionForm, setShowPrescriptionForm] = useState(false);
+  const [prescriptionData, setPrescriptionData] = useState({
+    patientId: "",
+    medicines: "",
+    dosage: "",
+    instructions: "",
+    followUpDate: "",
+    diagnosis: ""
+  });
 
   const navigate = useNavigate();
+  const { toPDF, targetRef } = usePDF({ filename: "prescription.pdf" });
 
   // Configure axios instance
   const api = axios.create({
@@ -89,6 +100,49 @@ const DoctorDashboard = () => {
     }
   };
 
+  // Handle prescription input changes
+  const handlePrescriptionChange = (e) => {
+    const { name, value } = e.target;
+    setPrescriptionData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Generate PDF prescription
+  const generatePrescription = () => {
+    toPDF();
+  };
+
+  // Submit prescription data
+  const submitPrescription = async () => {
+    try {
+      setLoading(true);
+      const response = await api.post("/prescriptions", {
+        ...prescriptionData,
+        doctorId: user?._id,
+        date: new Date().toISOString()
+      });
+
+      if (response.data.success) {
+        setSuccess("Prescription saved successfully");
+        setShowPrescriptionForm(false);
+        setPrescriptionData({
+          patientId: "",
+          medicines: "",
+          dosage: "",
+          instructions: "",
+          followUpDate: "",
+          diagnosis: ""
+        });
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to save prescription");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Handle logout
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -128,6 +182,11 @@ const DoctorDashboard = () => {
     setPage(1);
   }, [appointments, statusFilter, searchTerm, selectedDate]);
 
+  // Get selected patient details
+  const getSelectedPatient = () => {
+    return appointments.find(a => a.patient?._id === prescriptionData.patientId)?.patient;
+  };
+
   // Pagination
   const paginatedAppointments = filteredAppointments.slice(
     (page - 1) * limit,
@@ -152,7 +211,7 @@ const DoctorDashboard = () => {
         </button>
       </div>
 
-      {/* Filters */}
+      {/* Filters and Prescription Button */}
       <div className="dashboard-controls">
         <div className="filter-controls">
           <select
@@ -179,6 +238,12 @@ const DoctorDashboard = () => {
             onChange={(e) => setSelectedDate(e.target.value)}
           />
         </div>
+        <button 
+          className="add-prescription-btn"
+          onClick={() => setShowPrescriptionForm(true)}
+        >
+          Generate Prescription
+        </button>
       </div>
 
       {/* Status Messages */}
@@ -317,6 +382,174 @@ const DoctorDashboard = () => {
             >
               Close
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Prescription Form Modal */}
+      {showPrescriptionForm && (
+        <div className="modal-overlay" onClick={() => setShowPrescriptionForm(false)}>
+          <div className="modal-content prescription-modal" onClick={e => e.stopPropagation()}>
+            <h3>Generate Prescription</h3>
+            <div className="prescription-form" ref={targetRef}>
+              <div className="prescription-header">
+                <h2>Medical Prescription</h2>
+                <div className="clinic-info">
+                  <p>Healthcare Clinic</p>
+                  <p>123 Medical Drive, City</p>
+                  <p>Phone: (123) 456-7890</p>
+                </div>
+                <p className="prescription-date">Date: {new Date().toLocaleDateString()}</p>
+              </div>
+              
+              <div className="prescription-body">
+                <div className="doctor-patient-info">
+                  <div>
+                    <p><strong>Doctor:</strong> Dr. {user?.name || "Doctor"}</p>
+                    <p><strong>Specialization:</strong> {user?.specialization || "General Physician"}</p>
+                    <p><strong>License No:</strong> MD-{user?._id?.slice(-6) || "XXXXXX"}</p>
+                  </div>
+                  <div>
+                    <p><strong>Patient:</strong> {getSelectedPatient()?.name || "________________"}</p>
+                    <p><strong>Age/Gender:</strong> {getSelectedPatient()?.age || "__"} / {getSelectedPatient()?.gender || "___"}</p>
+                    <p><strong>Patient ID:</strong> {getSelectedPatient()?._id?.slice(-6) || "______"}</p>
+                  </div>
+                </div>
+
+                <div className="diagnosis-section">
+                  <p><strong>Diagnosis:</strong></p>
+                  <div className="diagnosis-box">
+                    {prescriptionData.diagnosis || "_________________________________________________________"}
+                  </div>
+                </div>
+
+                <div className="medicines-section">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Medicine</th>
+                        <th>Dosage</th>
+                        <th>Duration</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {prescriptionData.medicines.split('\n').map((medicine, index) => (
+                        medicine.trim() && (
+                          <tr key={index}>
+                            <td>{medicine}</td>
+                            <td>{prescriptionData.dosage.split('\n')[index] || "As directed"}</td>
+                            <td>{prescriptionData.instructions.split('\n')[index] || "Until finished"}</td>
+                          </tr>
+                        )
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="additional-instructions">
+                  <p><strong>Additional Instructions:</strong></p>
+                  <p>{prescriptionData.instructions || "None"}</p>
+                </div>
+
+                <div className="follow-up">
+                  <p><strong>Follow-up Date:</strong> {prescriptionData.followUpDate || "Not specified"}</p>
+                </div>
+              </div>
+              
+              <div className="prescription-footer">
+                <div className="signature">
+                  <p>Signature: _________________</p>
+                  <p>Dr. {user?.name || "Doctor"}</p>
+                </div>
+              </div>
+            </div>
+            
+            <div className="prescription-form-inputs">
+              <div className="form-group">
+                <label>Select Patient:</label>
+                <select
+                  name="patientId"
+                  value={prescriptionData.patientId}
+                  onChange={handlePrescriptionChange}
+                  required
+                >
+                  <option value="">Select Patient</option>
+                  {appointments.map(appt => (
+                    <option key={appt.patient?._id} value={appt.patient?._id}>
+                      {appt.patient?.name} ({new Date(appt.date).toLocaleDateString()})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label>Diagnosis:</label>
+                <input
+                  type="text"
+                  name="diagnosis"
+                  value={prescriptionData.diagnosis}
+                  onChange={handlePrescriptionChange}
+                  placeholder="Enter diagnosis"
+                />
+              </div>
+
+              <div className="form-group">
+                <label>Medicines (one per line):</label>
+                <textarea
+                  name="medicines"
+                  value={prescriptionData.medicines}
+                  onChange={handlePrescriptionChange}
+                  placeholder="Enter medicine names"
+                  rows={3}
+                  required
+                />
+              </div>
+              
+              <div className="form-group">
+                <label>Dosage Instructions:</label>
+                <textarea
+                  name="dosage"
+                  value={prescriptionData.dosage}
+                  onChange={handlePrescriptionChange}
+                  placeholder="Enter dosage for each medicine"
+                  rows={3}
+                  required
+                />
+              </div>
+              
+              <div className="form-group">
+                <label>Additional Instructions:</label>
+                <textarea
+                  name="instructions"
+                  value={prescriptionData.instructions}
+                  onChange={handlePrescriptionChange}
+                  placeholder="Any special instructions"
+                  rows={2}
+                />
+              </div>
+              
+              <div className="form-group">
+                <label>Follow-up Date:</label>
+                <input
+                  type="date"
+                  name="followUpDate"
+                  value={prescriptionData.followUpDate}
+                  onChange={handlePrescriptionChange}
+                />
+              </div>
+            </div>
+            
+            <div className="modal-actions">
+              <button onClick={generatePrescription} className="generate-btn" disabled={!prescriptionData.patientId}>
+                Generate PDF
+              </button>
+              <button 
+                onClick={() => setShowPrescriptionForm(false)} 
+                className="cancel-btn"
+              >
+                Cancel
+              </button>
+            </div>
           </div>
         </div>
       )}

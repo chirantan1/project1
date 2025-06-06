@@ -1,257 +1,367 @@
-/* Global Reset */
+/* DoctorDashboard.css */
+
+/* Base Styles */
+:root {
+  --primary: #3a86ff;
+  --primary-dark: #2667cc;
+  --secondary: #8338ec;
+  --success: #06d6a0;
+  --danger: #ef476f;
+  --warning: #ffd166;
+  --light: #f8f9fa;
+  --dark: #212529;
+  --gray: #6c757d;
+  --light-gray: #e9ecef;
+  --white: #ffffff;
+  --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --transition: all 0.3s ease;
+}
+
 * {
+  box-sizing: border-box;
   margin: 0;
   padding: 0;
-  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  line-height: 1.6;
+  background-color: #f5f7fa;
+  color: var(--dark);
 }
 
 .doctor-dashboard {
-  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-  padding: 2rem;
-  background: linear-gradient(135deg, #fdfcfb, #e2d1c3);
-  min-height: 100vh;
-  color: #333;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
 }
 
-/* Header */
+/* Header Styles */
 .dashboard-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 2rem;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--light-gray);
+  animation: fadeIn 0.5s ease-out;
 }
 
 .dashboard-header h2 {
-  font-size: 2rem;
-  color: #4a148c;
+  color: var(--primary);
+  font-size: 28px;
+  font-weight: 700;
 }
 
 .welcome-message {
-  font-size: 1rem;
-  color: #555;
+  color: var(--gray);
+  font-size: 16px;
 }
 
 .logout-btn {
-  padding: 0.6rem 1.2rem;
-  background-color: #e53935;
-  color: white;
+  background-color: var(--danger);
+  color: var(--white);
   border: none;
-  border-radius: 20px;
+  padding: 10px 20px;
+  border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
-  transition: background 0.3s ease;
+  transition: var(--transition);
+  box-shadow: var(--shadow);
 }
 
 .logout-btn:hover {
-  background-color: #b71c1c;
+  background-color: #d23369;
+  transform: translateY(-2px);
 }
 
-/* Filters */
+/* Controls Section */
 .dashboard-controls {
   display: flex;
-  justify-content: center;
-  margin-bottom: 1.5rem;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+  gap: 15px;
 }
 
 .filter-controls {
   display: flex;
+  gap: 15px;
   flex-wrap: wrap;
-  gap: 1rem;
-  justify-content: center;
 }
 
-.filter-controls input,
-.filter-controls select {
-  padding: 0.5rem 1rem;
-  border: 1px solid #ccc;
-  border-radius: 15px;
-  font-size: 0.95rem;
+.filter-controls select,
+.filter-controls input[type="text"],
+.filter-controls input[type="date"] {
+  padding: 10px 15px;
+  border: 1px solid var(--light-gray);
+  border-radius: 8px;
+  font-size: 14px;
+  transition: var(--transition);
+  min-width: 200px;
 }
 
-/* Messages */
+.filter-controls select:focus,
+.filter-controls input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(58, 134, 255, 0.2);
+}
+
+.add-prescription-btn {
+  background-color: var(--success);
+  color: var(--white);
+  border: none;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: var(--transition);
+  box-shadow: var(--shadow);
+  white-space: nowrap;
+}
+
+.add-prescription-btn:hover {
+  background-color: #05b888;
+  transform: translateY(-2px);
+}
+
+/* Status Messages */
 .error-message,
 .success-message {
-  text-align: center;
-  margin-bottom: 1rem;
-  padding: 0.75rem 1rem;
-  border-radius: 10px;
+  padding: 15px;
+  margin-bottom: 20px;
+  border-radius: 8px;
   font-weight: 500;
-  width: fit-content;
-  margin-inline: auto;
+  animation: slideIn 0.3s ease-out;
 }
 
 .error-message {
-  background-color: #ffebee;
-  color: #c62828;
+  background-color: #fdecea;
+  color: var(--danger);
+  border-left: 4px solid var(--danger);
 }
 
 .success-message {
   background-color: #e8f5e9;
   color: #2e7d32;
+  border-left: 4px solid #2e7d32;
 }
 
 /* Summary Cards */
 .appointments-summary {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-  justify-content: center;
-  margin-bottom: 2rem;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
 }
 
 .summary-card {
-  background: #ffffff;
-  padding: 1.2rem;
-  border-radius: 20px;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  background-color: var(--white);
+  padding: 20px;
+  border-radius: 12px;
   text-align: center;
-  flex: 1;
-  min-width: 150px;
-  max-width: 200px;
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+}
+
+.summary-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
 }
 
 .summary-card h4 {
-  color: #6a1b9a;
-  font-size: 1rem;
+  color: var(--gray);
+  font-size: 16px;
+  margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 }
 
 .summary-card p {
-  font-size: 1.4rem;
-  font-weight: bold;
-  color: #333;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--primary);
 }
 
 /* Appointments List */
 .appointments-list {
   display: grid;
-  gap: 1.2rem;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
 }
 
 .appt-card {
-  background: #fafafa;
-  padding: 1rem;
-  border-radius: 18px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
-  transition: transform 0.2s ease;
+  background-color: var(--white);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  transition: var(--transition);
+  animation: fadeInUp 0.5s ease-out;
 }
 
 .appt-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-5px);
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
 }
 
 .appt-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 0.5rem;
+  padding: 15px;
+  background-color: var(--primary);
+  color: var(--white);
+}
+
+.appt-card-header h4 {
+  font-size: 18px;
+  font-weight: 600;
 }
 
 .status-badge {
-  padding: 0.3rem 0.7rem;
-  border-radius: 12px;
-  font-size: 0.8rem;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
   font-weight: 600;
-  text-transform: capitalize;
+  text-transform: uppercase;
 }
 
 .status-pending {
-  background-color: #fff3e0;
-  color: #ef6c00;
+  background-color: var(--warning);
+  color: var(--dark);
 }
 
 .status-confirmed {
-  background-color: #e3f2fd;
-  color: #1e88e5;
+  background-color: var(--success);
+  color: var(--white);
 }
 
 .status-completed {
-  background-color: #e8f5e9;
-  color: #43a047;
+  background-color: var(--gray);
+  color: var(--white);
 }
 
 .status-cancelled {
-  background-color: #ffebee;
-  color: #d32f2f;
+  background-color: var(--danger);
+  color: var(--white);
+}
+
+.appt-card-body {
+  padding: 15px;
 }
 
 .appt-card-body p {
-  margin: 0.3rem 0;
-  color: #555;
+  margin-bottom: 10px;
+  font-size: 14px;
+}
+
+.appt-card-body strong {
+  color: var(--primary);
 }
 
 .appt-card-footer {
-  margin-top: 0.8rem;
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
+  justify-content: space-between;
+  padding: 15px;
+  border-top: 1px solid var(--light-gray);
 }
 
 .appt-card-footer button {
-  flex: 1;
-  padding: 0.4rem 0.6rem;
-  font-size: 0.85rem;
-  font-weight: 500;
+  padding: 8px 15px;
   border: none;
-  border-radius: 12px;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
+  transition: var(--transition);
 }
 
 .details-btn {
-  background-color: #6a1b9a;
-  color: white;
+  background-color: var(--light-gray);
+  color: var(--dark);
+}
+
+.details-btn:hover {
+  background-color: #d1d7e0;
 }
 
 .accept-btn {
-  background-color: #43a047;
-  color: white;
+  background-color: var(--success);
+  color: var(--white);
+}
+
+.accept-btn:hover {
+  background-color: #05b888;
 }
 
 .cancel-btn {
-  background-color: #e53935;
-  color: white;
+  background-color: var(--danger);
+  color: var(--white);
+}
+
+.cancel-btn:hover {
+  background-color: #d23369;
 }
 
 .complete-btn {
-  background-color: #1e88e5;
-  color: white;
+  background-color: var(--secondary);
+  color: var(--white);
 }
 
-.appt-card-footer button:hover {
-  opacity: 0.9;
+.complete-btn:hover {
+  background-color: #6a2bc2;
+}
+
+/* Loading and Empty States */
+.loading-spinner,
+.no-appointments {
+  text-align: center;
+  padding: 40px;
+  font-size: 18px;
+  color: var(--gray);
+  background-color: var(--white);
+  border-radius: 12px;
+  box-shadow: var(--shadow);
 }
 
 /* Pagination */
 .pagination {
-  margin-top: 2rem;
   display: flex;
   justify-content: center;
-  gap: 0.5rem;
-  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 30px;
 }
 
 .pagination button {
-  padding: 0.4rem 0.9rem;
-  font-size: 0.9rem;
-  border-radius: 10px;
-  border: 1px solid #ccc;
-  background: white;
+  padding: 8px 15px;
+  border: 1px solid var(--light-gray);
+  background-color: var(--white);
+  border-radius: 6px;
   cursor: pointer;
-  transition: background 0.2s ease;
+  transition: var(--transition);
+}
+
+.pagination button:hover:not(:disabled) {
+  background-color: var(--primary);
+  color: var(--white);
+  border-color: var(--primary);
 }
 
 .pagination button.active {
-  background-color: #6a1b9a;
-  color: white;
-  font-weight: bold;
+  background-color: var(--primary);
+  color: var(--white);
+  border-color: var(--primary);
 }
 
-.pagination button:hover:not(.active) {
-  background-color: #eee;
+.pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
-/* Modal */
+/* Modal Styles */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -262,48 +372,369 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 999;
+  z-index: 1000;
+  animation: fadeIn 0.3s ease-out;
 }
 
 .modal-content {
-  background-color: white;
-  padding: 2rem;
-  border-radius: 20px;
-  max-width: 500px;
+  background-color: var(--white);
+  border-radius: 12px;
   width: 90%;
-  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
-  animation: fadeIn 0.3s ease;
+  max-width: 800px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 25px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  animation: slideUp 0.4s ease-out;
 }
 
 .modal-content h3 {
-  color: #4a148c;
-  margin-bottom: 1rem;
+  color: var(--primary);
+  margin-bottom: 20px;
+  font-size: 24px;
+}
+
+.modal-body {
+  margin-bottom: 20px;
 }
 
 .modal-body p {
-  margin-bottom: 0.6rem;
-  color: #444;
+  margin-bottom: 10px;
 }
 
 .close-modal {
-  background-color: #6a1b9a;
-  color: white;
+  background-color: var(--danger);
+  color: var(--white);
   border: none;
-  padding: 0.6rem 1.2rem;
-  border-radius: 12px;
-  margin-top: 1rem;
+  padding: 10px 20px;
+  border-radius: 8px;
   cursor: pointer;
   font-weight: 600;
+  transition: var(--transition);
+}
+
+.close-modal:hover {
+  background-color: #d23369;
+}
+
+/* Prescription Modal Specific Styles */
+.prescription-modal {
+  max-width: 900px;
+}
+
+.prescription-form {
+  background-color: var(--white);
+  padding: 25px;
+  border: 1px solid var(--light-gray);
+  margin-bottom: 25px;
+  font-family: 'Arial', sans-serif;
+  border-radius: 8px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+.prescription-header {
+  text-align: center;
+  margin-bottom: 25px;
+  padding-bottom: 15px;
+  border-bottom: 2px solid var(--primary);
+}
+
+.prescription-header h2 {
+  color: var(--primary);
+  font-size: 24px;
+  margin-bottom: 10px;
+}
+
+.clinic-info {
+  margin: 15px 0;
+  font-size: 14px;
+  color: var(--gray);
+  line-height: 1.5;
+}
+
+.prescription-date {
+  text-align: right;
+  font-weight: bold;
+  color: var(--dark);
+}
+
+.doctor-patient-info {
+  display: flex;
+  justify-content: space-between;
+  margin: 20px 0;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.doctor-patient-info div {
+  flex: 1;
+}
+
+.doctor-patient-info p {
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.diagnosis-section {
+  margin: 20px 0;
+}
+
+.diagnosis-box {
+  min-height: 60px;
+  border: 1px dashed var(--gray);
+  padding: 12px;
+  margin-top: 8px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.medicines-section {
+  margin: 25px 0;
+}
+
+.medicines-section table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.medicines-section th {
+  background-color: var(--primary);
+  color: var(--white);
+  padding: 10px;
+  text-align: left;
+}
+
+.medicines-section td {
+  padding: 10px;
+  border-bottom: 1px solid var(--light-gray);
+}
+
+.medicines-section tr:nth-child(even) {
+  background-color: #f9f9f9;
+}
+
+.additional-instructions,
+.follow-up {
+  margin: 15px 0;
+  font-size: 14px;
+}
+
+.prescription-footer {
+  margin-top: 40px;
+  text-align: right;
+}
+
+.signature {
+  display: inline-block;
+  text-align: center;
+  margin-top: 50px;
+}
+
+.signature p:first-child {
+  border-top: 1px solid var(--dark);
+  padding-top: 5px;
+  margin-bottom: 5px;
+  width: 200px;
+}
+
+/* Prescription Form Inputs */
+.prescription-form-inputs {
+  margin-top: 20px;
+  padding: 20px;
+  background-color: #f8f9fa;
+  border-radius: 8px;
+}
+
+.form-group {
+  margin-bottom: 20px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: var(--dark);
+}
+
+.form-group input[type="text"],
+.form-group input[type="date"],
+.form-group textarea,
+.form-group select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--light-gray);
+  border-radius: 8px;
+  font-size: 14px;
+  transition: var(--transition);
+}
+
+.form-group textarea {
+  min-height: 80px;
+  resize: vertical;
+}
+
+.form-group input:focus,
+.form-group textarea:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(58, 134, 255, 0.2);
+}
+
+/* Modal Actions */
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 15px;
+  margin-top: 25px;
+}
+
+.modal-actions button {
+  padding: 12px 20px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: var(--transition);
+}
+
+.generate-btn {
+  background-color: var(--primary);
+  color: var(--white);
+}
+
+.generate-btn:hover:not(:disabled) {
+  background-color: var(--primary-dark);
+  transform: translateY(-2px);
+}
+
+.save-btn {
+  background-color: var(--success);
+  color: var(--white);
+}
+
+.save-btn:hover:not(:disabled) {
+  background-color: #05b888;
+  transform: translateY(-2px);
+}
+
+.cancel-btn {
+  background-color: var(--danger);
+  color: var(--white);
+}
+
+.cancel-btn:hover {
+  background-color: #d23369;
+  transform: translateY(-2px);
+}
+
+.modal-actions button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none !important;
 }
 
 /* Animations */
 @keyframes fadeIn {
-  from {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { 
     opacity: 0;
     transform: translateY(-20px);
-  } 
-  to {
+  }
+  to { 
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes fadeInUp {
+  from { 
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from { 
+    opacity: 0;
+    transform: translateY(50px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .dashboard-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .filter-controls {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .filter-controls select,
+  .filter-controls input[type="text"],
+  .filter-controls input[type="date"] {
+    width: 100%;
+  }
+  
+  .add-prescription-btn {
+    width: 100%;
+    margin-top: 10px;
+  }
+  
+  .appointments-summary {
+    grid-template-columns: 1fr 1fr;
+  }
+  
+  .appointments-list {
+    grid-template-columns: 1fr;
+  }
+  
+  .doctor-patient-info {
+    flex-direction: column;
+    gap: 15px;
+  }
+  
+  .modal-actions {
+    flex-direction: column;
+  }
+  
+  .modal-actions button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .appointments-summary {
+    grid-template-columns: 1fr;
+  }
+  
+  .appt-card-footer {
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .appt-card-footer button {
+    width: 100%;
+  }
+  
+  .pagination {
+    flex-wrap: wrap;
   }
 }
