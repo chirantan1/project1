@@ -129,6 +129,18 @@ const Login = () => {
           Don't have an account? <Link to="/signup">Sign up here</Link>
         </p>
 
+        {/* ✅ AI Assistant Button */}
+        <div className="chatbot-access">
+          <button
+            className="chatbot-btn"
+            onClick={() =>
+              window.open("https://disease-assistance-web.onrender.com", "_blank")
+            }
+          >
+            Ask our AI Assistant
+          </button>
+        </div>
+
         <div className="admin-access">
           <h3>Admin Dashboard (Official Use Only)</h3>
           <button className="admin-btn" onClick={() => setShowAdminInput(true)}>
