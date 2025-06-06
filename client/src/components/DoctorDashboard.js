@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { usePDF } from "react-to-pdf";
@@ -281,9 +281,18 @@ const DoctorDashboard = () => {
               </div>
 
               <div className="appt-card-body">
-                <p><strong>Date:</strong> {new Date(appt.date).toLocaleDateString()}</p>
-                <p><strong>Time:</strong> {appt.time || "N/A"}</p>
-                <p><strong>Symptoms:</strong> {appt.symptoms || "N/A"}</p>
+                <div className="appt-card-row">
+                  <span className="appt-card-label">Date:</span>
+                  <span className="appt-card-value">{new Date(appt.date).toLocaleDateString()}</span>
+                </div>
+                <div className="appt-card-row">
+                  <span className="appt-card-label">Time:</span>
+                  <span className="appt-card-value">{appt.time || "N/A"}</span>
+                </div>
+                <div className="appt-card-row">
+                  <span className="appt-card-label">Symptoms:</span>
+                  <span className="appt-card-value symptoms">{appt.symptoms || "N/A"}</span>
+                </div>
               </div>
 
               <div className="appt-card-footer">
@@ -543,6 +552,7 @@ const DoctorDashboard = () => {
               <button onClick={generatePrescription} className="generate-btn" disabled={!prescriptionData.patientId}>
                 Generate PDF
               </button>
+              
               <button 
                 onClick={() => setShowPrescriptionForm(false)} 
                 className="cancel-btn"
