@@ -5,7 +5,6 @@ const { check, validationResult } = require('express-validator');
 
 const User = require('../models/User');
 const authMiddleware = require('../middleware/auth');
-const { sendVerificationEmail, sendAdminNotification } = require('../services/emailService');
 
 const router = express.Router();
 
@@ -14,12 +13,12 @@ const handleValidationErrors = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     res.status(400).json({ success: false, errors: errors.array() });
-    return true;
+    return true; // errors found
   }
   return false;
 };
 
-// ========== POST /api/auth/signup ==========
+// POST /api/auth/signup
 router.post(
   '/signup',
   [
@@ -27,74 +26,51 @@ router.post(
     check('email', 'Please include a valid email').isEmail(),
     check('password', 'Password must be at least 6 characters').isLength({ min: 6 }),
     check('role', 'Role must be patient or doctor').isIn(['patient', 'doctor']),
-    // Conditional validations for doctor role
-    check('phone').if(check('role').equals('doctor')).notEmpty().withMessage('Phone is required for doctors'),
-    check('specialization').if(check('role').equals('doctor')).notEmpty().withMessage('Specialization is required for doctors'),
-    check('experience').if(check('role').equals('doctor')).isInt({ min: 0 }).withMessage('Experience must be a positive number'),
-    check('bio').if(check('role').equals('doctor')).isLength({ min: 10 }).withMessage('Bio must be at least 10 characters'),
-    check('licenseNumber').if(check('role').equals('doctor')).notEmpty().withMessage('License number is required for doctors'),
+    // Conditional checks for doctors
+    check('phone', 'Phone is required for doctors').if(check('role').equals('doctor')).notEmpty(),
+    check('specialization', 'Specialization is required for doctors').if(check('role').equals('doctor')).notEmpty(),
+    check('experience', 'Experience must be a positive number').if(check('role').equals('doctor')).isInt({ min: 0 }),
+    check('bio', 'Bio must be at least 50 characters').if(check('role').equals('doctor')).isLength({ min: 5 }),
   ],
   async (req, res) => {
     if (handleValidationErrors(req, res)) return;
 
-    const {
-      name,
-      email,
-      password,
-      role,
-      specialization,
-      experience,
-      phone,
-      bio,
-      licenseNumber
-    } = req.body;
+    const { name, email, password, role, specialization, experience, phone, bio } = req.body;
 
     try {
+      // Check if user exists
       let user = await User.findOne({ email });
       if (user) {
         return res.status(400).json({ success: false, message: 'User already exists' });
       }
 
+      // Create new user object
       user = new User({
         name,
         email,
         role,
-        password,
-        ...(role === 'doctor' && {
-          specialization,
-          experience,
-          phone,
-          bio,
-          licenseNumber,
-          isVerified: false,
-          verificationStatus: 'pending'
-        })
+        specialization: role === 'doctor' ? specialization : undefined,
+        experience: role === 'doctor' ? experience : undefined,
+        phone: role === 'doctor' ? phone : undefined,
+        bio: role === 'doctor' ? bio : undefined,
       });
 
+      // Hash password
       const salt = await bcrypt.genSalt(10);
       user.password = await bcrypt.hash(password, salt);
 
       await user.save();
 
-      if (role === 'doctor') {
-        await sendVerificationEmail(user);
-        await sendAdminNotification(user);
-        return res.status(201).json({
-          success: true,
-          message: 'Doctor registration submitted. You will be notified after admin approval.'
-        });
-      }
-
-      const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
-        expiresIn: '1d'
-      });
+      // Generate JWT token
+      const payload = { id: user._id, role: user.role };
+      const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
 
       res.status(201).json({
         success: true,
         token,
         role: user.role,
         id: user._id,
-        name: user.name
+        name: user.name,
       });
     } catch (err) {
       console.error('Signup error:', err.message);
@@ -103,12 +79,12 @@ router.post(
   }
 );
 
-// ========== POST /api/auth/login ==========
+// POST /api/auth/login
 router.post(
   '/login',
   [
     check('email', 'Please include a valid email').isEmail(),
-    check('password', 'Password is required').exists()
+    check('password', 'Password is required').exists(),
   ],
   async (req, res) => {
     if (handleValidationErrors(req, res)) return;
@@ -116,33 +92,28 @@ router.post(
     const { email, password } = req.body;
 
     try {
+      // Find user, including password field explicitly
       const user = await User.findOne({ email }).select('+password');
       if (!user) {
         return res.status(401).json({ success: false, message: 'Invalid credentials' });
       }
 
+      // Compare password
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
         return res.status(401).json({ success: false, message: 'Invalid credentials' });
       }
 
-      if (user.role === 'doctor' && !user.isVerified) {
-        return res.status(403).json({
-          success: false,
-          message: 'Your account is pending admin approval. Please wait for verification.'
-        });
-      }
-
-      const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
-        expiresIn: '1d'
-      });
+      // Generate token
+      const payload = { id: user._id, role: user.role };
+      const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
 
       res.json({
         success: true,
         token,
         role: user.role,
         id: user._id,
-        name: user.name
+        name: user.name,
       });
     } catch (err) {
       console.error('Login error:', err.message);
@@ -151,7 +122,7 @@ router.post(
   }
 );
 
-// ========== GET /api/auth/me (Protected) ==========
+// GET /api/auth/me (protected route)
 router.get('/me', authMiddleware.protect, async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select('-password');
@@ -165,10 +136,10 @@ router.get('/me', authMiddleware.protect, async (req, res) => {
   }
 });
 
-// ========== GET /api/auth/doctors ==========
+// Public list of doctors
 router.get('/doctors', async (req, res) => {
   try {
-    const doctors = await User.find({ role: 'doctor', isVerified: true }).select('-password').sort({ name: 1 });
+    const doctors = await User.find({ role: 'doctor' }).select('-password').sort({ name: 1 });
     res.json({ success: true, count: doctors.length, data: doctors });
   } catch (err) {
     console.error('Get doctors error:', err.message);
@@ -176,7 +147,7 @@ router.get('/doctors', async (req, res) => {
   }
 });
 
-// ========== GET /api/auth/doctors/:id ==========
+// Get single doctor by id
 router.get('/doctors/:id', async (req, res) => {
   try {
     const doctor = await User.findOne({ _id: req.params.id, role: 'doctor' }).select('-password');
