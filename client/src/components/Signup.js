@@ -14,8 +14,10 @@ const Signup = () => {
     experience: "",
     phone: "",
     bio: "",
+    licenseNumber: "",
   });
 
+  const [documents, setDocuments] = useState([]);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
@@ -24,6 +26,10 @@ const Signup = () => {
 
   const handleChange = (e) =>
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+
+  const handleFileChange = (e) => {
+    setDocuments([...e.target.files]);
+  };
 
   const validateForm = () => {
     if (!formData.name || !formData.email || !formData.password || !formData.confirmPassword) {
@@ -42,8 +48,15 @@ const Signup = () => {
     }
 
     if (formData.role === "doctor") {
-      if (!formData.specialization || !formData.experience || !formData.phone || !formData.bio) {
-        setError("All doctor fields are required");
+      if (
+        !formData.specialization ||
+        !formData.experience ||
+        !formData.phone ||
+        !formData.bio ||
+        !formData.licenseNumber ||
+        documents.length === 0
+      ) {
+        setError("All doctor fields are required including documents");
         return false;
       }
       if (isNaN(formData.experience) || Number(formData.experience) < 0) {
@@ -66,31 +79,43 @@ const Signup = () => {
     setLoading(true);
 
     try {
-      const submitData = {
-        name: formData.name,
-        email: formData.email,
-        password: formData.password,
-        role: formData.role,
-      };
+      const submitData = new FormData();
+      submitData.append("name", formData.name);
+      submitData.append("email", formData.email);
+      submitData.append("password", formData.password);
+      submitData.append("role", formData.role);
 
       if (formData.role === "doctor") {
-        submitData.specialization = formData.specialization;
-        submitData.experience = Number(formData.experience);
-        submitData.phone = formData.phone;
-        submitData.bio = formData.bio;
+        submitData.append("specialization", formData.specialization);
+        submitData.append("experience", formData.experience);
+        submitData.append("phone", formData.phone);
+        submitData.append("bio", formData.bio);
+        submitData.append("licenseNumber", formData.licenseNumber);
+
+        documents.forEach((file) => {
+          submitData.append("documents", file);
+        });
       }
 
       const response = await axios.post(
-        "https://project1-backend-d55g.onrender.com/api/auth/signup",
-        submitData
+        "https://project1-backend-d55g.onrender.com/api/signup",
+        submitData,
+        {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
+        }
       );
 
-      setSuccess("Registration successful! Redirecting...");
-      localStorage.setItem("token", response.data.token);
-
-      setTimeout(() => {
-        navigate(`/${response.data.role}-dashboard`);
-      }, 1500);
+      if (formData.role === "doctor") {
+        setSuccess("Registration submitted for admin approval. You'll be notified via email once approved.");
+      } else {
+        setSuccess("Registration successful! Redirecting...");
+        localStorage.setItem("token", response.data.token);
+        setTimeout(() => {
+          navigate(`/${response.data.role}-dashboard`);
+        }, 1500);
+      }
     } catch (err) {
       console.error("Signup error:", err.response?.data);
       setError(err.response?.data?.message || "Registration failed. Please try again.");
@@ -107,7 +132,7 @@ const Signup = () => {
         {error && <p className="error-text">{error}</p>}
         {success && <p className="success-text">{success}</p>}
 
-        <form onSubmit={handleSubmit} className="signup-form">
+        <form onSubmit={handleSubmit} className="signup-form" encType="multipart/form-data">
           <div className="form-group">
             <label htmlFor="name">Full Name</label>
             <input
@@ -186,6 +211,19 @@ const Signup = () => {
               </div>
 
               <div className="form-group">
+                <label htmlFor="licenseNumber">License Number</label>
+                <input
+                  id="licenseNumber"
+                  name="licenseNumber"
+                  type="text"
+                  placeholder="Your professional license number"
+                  value={formData.licenseNumber}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
                 <label htmlFor="experience">Years of Experience</label>
                 <input
                   id="experience"
@@ -223,6 +261,20 @@ const Signup = () => {
                   required
                   rows={4}
                 />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="documents">Upload Documents (License, Certificates)</label>
+                <input
+                  id="documents"
+                  name="documents"
+                  type="file"
+                  multiple
+                  onChange={handleFileChange}
+                  required
+                  accept=".pdf,.jpg,.jpeg,.png"
+                />
+                <small>Upload scanned copies of your professional documents (PDF, JPG, PNG)</small>
               </div>
             </>
           )}
