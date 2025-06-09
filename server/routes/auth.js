@@ -3,102 +3,171 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { check, validationResult } = require('express-validator');
 
-const User = require('../models/User');
-const authMiddleware = require('../middleware/auth');
+const User = require('../models/User'); // Ensure correct path to your User model
+const authMiddleware = require('../middleware/auth'); // Assuming this path is correct
 
 const router = express.Router();
 
-// Helper to handle validation errors
+// Helper function to handle validation errors from express-validator
 const handleValidationErrors = (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     res.status(400).json({ success: false, errors: errors.array() });
-    return true;
+    return true; // Indicates that errors were found and response was sent
   }
-  return false;
+  return false; // Indicates no validation errors
 };
 
-// POST /api/auth/signup
+// @route   POST /api/auth/signup
+// @desc    Register a new user (patient or doctor)
+// @access  Public
 router.post(
   '/signup',
   [
+    // General user fields validation
     check('name', 'Name is required').trim().notEmpty(),
     check('email', 'Please include a valid email').isEmail(),
     check('password', 'Password must be at least 6 characters').isLength({ min: 6 }),
-    check('role', 'Role must be patient or doctor').isIn(['patient', 'doctor']),
-    check('phone', 'Phone is required').notEmpty(),
+    check('role', 'Role must be patient or doctor').isIn(['patient', 'doctor']), // Ensure consistent enum values with model
+
+    // Doctor specific fields validation (conditional)
     check('specialization', 'Specialization is required for doctors')
       .if(check('role').equals('doctor'))
-      .notEmpty(),
-    check('experience', 'Experience must be a positive number')
+      .trim().notEmpty(),
+    check('experience', 'Experience must be a non-negative number for doctors')
       .if(check('role').equals('doctor'))
-      .isInt({ min: 0 }),
-    check('bio', 'Bio must be at least 5 characters')
+      .isInt({ min: 0 }).withMessage('Experience must be a number greater than or equal to 0'),
+    check('phone', 'Phone number is required for doctors')
       .if(check('role').equals('doctor'))
-      .isLength({ min: 5 }),
+      .trim().notEmpty().isLength({ min: 10 }).withMessage('Phone number must be at least 10 digits.'), // Basic phone length validation
+    check('bio', 'Professional Bio is required for doctors')
+      .if(check('role').equals('doctor'))
+      .trim().notEmpty().isLength({ min: 5 }).withMessage('Bio must be at least 5 characters'),
+
+    // New Doctor-specific fields validation (conditional and optional for some)
+    check('isActive', 'Active status must be a boolean')
+      .if(check('role').equals('doctor'))
+      .isBoolean().optional({ checkFalsy: true }), // Optional, as it has a default in the model
+    check('availableDays', 'Available Days are required for doctors')
+      .if(check('role').equals('doctor'))
+      .trim().notEmpty(),
+    check('qualifications', 'Qualifications are required for doctors')
+      .if(check('role').equals('doctor'))
+      .trim().notEmpty(),
+    check('hospitalAffiliation', 'Hospital Affiliation is required for doctors')
+      .if(check('role').equals('doctor'))
+      .trim().notEmpty(),
+    
+    // Allergies, Medications, Medical History are optional for doctors, no `notEmpty()` check
+    check('allergies', 'Allergies must be a string').isString().optional({ checkFalsy: true }),
+    check('medications', 'Medications must be a string').isString().optional({ checkFalsy: true }),
+    check('medicalHistory', 'Medical History must be a string').isString().optional({ checkFalsy: true }),
   ],
   async (req, res) => {
-    if (handleValidationErrors(req, res)) return;
+    // Check for validation errors; if any, send error response and return
+    if (handleValidationErrors(req, res)) {
+      return;
+    }
 
-    const { name, email, password, role, specialization, experience, phone, bio } = req.body;
+    const {
+      name,
+      email,
+      password,
+      role,
+      specialization,
+      experience,
+      phone,
+      bio,
+      isActive, // New field
+      availableDays, // New field
+      qualifications, // New field
+      hospitalAffiliation, // New field
+      allergies, // New field (optional for doctor)
+      medications, // New field (optional for doctor)
+      medicalHistory, // New field (optional for doctor)
+    } = req.body; // Destructure all fields from the request body
 
     try {
+      // Check if a user with the given email already exists
       let user = await User.findOne({ email });
       if (user) {
-        return res.status(400).json({ success: false, message: 'User already exists' });
+        return res.status(400).json({ success: false, message: 'User already exists with this email' });
       }
 
+      // Hash the password
+      const salt = await bcrypt.genSalt(10);
+      const hashedPassword = await bcrypt.hash(password, salt);
+
+      // Create a new User instance
       user = new User({
         name,
         email,
-        password,
+        password: hashedPassword, // Store hashed password
         role,
-        phone,
-        ...(role === 'doctor' && { 
-          specialization,
-          experience,
-          bio
-        })
       });
 
-      const salt = await bcrypt.genSalt(10);
-      user.password = await bcrypt.hash(password, salt);
+      // Conditionally assign doctor-specific fields if the role is 'doctor'
+      if (role === 'doctor') {
+        user.specialization = specialization;
+        user.experience = Number(experience); // Ensure experience is stored as a number
+        user.phone = phone;
+        user.bio = bio;
+        user.isActive = typeof isActive === 'boolean' ? isActive : true; // Use provided boolean or default to true
+        user.availableDays = availableDays;
+        user.qualifications = qualifications;
+        user.hospitalAffiliation = hospitalAffiliation;
+        // Assign optional fields if they exist in the request body
+        if (allergies) user.allergies = allergies;
+        if (medications) user.medications = medications;
+        if (medicalHistory) user.medicalHistory = medicalHistory;
+      }
 
+      // Save the new user to the database
       await user.save();
 
-      const payload = { 
-        id: user._id, 
+      // Create JWT payload (including relevant user data for client-side)
+      const payload = {
+        id: user._id,
         role: user.role,
         name: user.name,
-        email: user.email
+        email: user.email,
+        // Include doctor specific fields in payload if applicable
+        ...(user.role === 'doctor' && {
+          specialization: user.specialization,
+          experience: user.experience,
+          phone: user.phone,
+          bio: user.bio,
+          isActive: user.isActive,
+          availableDays: user.availableDays,
+          qualifications: user.qualifications,
+          hospitalAffiliation: user.hospitalAffiliation,
+          allergies: user.allergies,
+          medications: user.medications,
+          medicalHistory: user.medicalHistory,
+        })
       };
-      
+
+      // Sign the JWT token
       const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
 
+      // Send success response with token and user data
       res.status(201).json({
         success: true,
+        message: 'User registered successfully',
         token,
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          phone: user.phone,
-          ...(role === 'doctor' && {
-            specialization: user.specialization,
-            experience: user.experience,
-            bio: user.bio
-          })
-        }
+        user: payload // Send the full payload as the user object
       });
     } catch (err) {
       console.error('Signup error:', err.message);
-      res.status(500).json({ success: false, message: 'Server error' });
+      // More detailed error for debugging: console.error('Signup error details:', err);
+      res.status(500).json({ success: false, message: 'Server error during registration' });
     }
   }
 );
 
-// POST /api/auth/login
+// @route   POST /api/auth/login
+// @desc    Authenticate user & get token
+// @access  Public
 router.post(
   '/login',
   [
@@ -106,60 +175,80 @@ router.post(
     check('password', 'Password is required').exists(),
   ],
   async (req, res) => {
-    if (handleValidationErrors(req, res)) return;
+    // Check for validation errors; if any, send error response and return
+    if (handleValidationErrors(req, res)) {
+      return;
+    }
 
     const { email, password } = req.body;
 
     try {
+      // Find user and explicitly select the password field
       const user = await User.findOne({ email }).select('+password');
       if (!user) {
         return res.status(401).json({ success: false, message: 'Invalid credentials' });
       }
 
+      // Compare the provided password with the hashed password in the database
       const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
         return res.status(401).json({ success: false, message: 'Invalid credentials' });
       }
 
-      const payload = { 
-        id: user._id, 
+      // Create JWT payload (including all relevant user data)
+      const payload = {
+        id: user._id,
         role: user.role,
         name: user.name,
-        email: user.email
+        email: user.email,
+        phone: user.phone, // Phone might be common to both roles
+        
+        // Include doctor specific fields in payload if applicable
+        ...(user.role === 'doctor' && {
+          specialization: user.specialization,
+          experience: user.experience,
+          bio: user.bio,
+          isActive: user.isActive,
+          availableDays: user.availableDays,
+          qualifications: user.qualifications,
+          hospitalAffiliation: user.hospitalAffiliation,
+          allergies: user.allergies,
+          medications: user.medications,
+          medicalHistory: user.medicalHistory,
+        }),
+        // Add patient specific fields if applicable (if your patient schema has more fields)
+        ...(user.role === 'patient' && {
+          // examplePatientField: user.examplePatientField
+        })
       };
-      
+
+      // Sign the JWT token
       const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
 
+      // Send success response with token and user data
       res.json({
         success: true,
         token,
-        user: {
-          id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          phone: user.phone,
-          ...(user.role === 'doctor' && {
-            specialization: user.specialization,
-            experience: user.experience,
-            bio: user.bio
-          })
-        }
+        user: payload // Send the full payload as the user object
       });
     } catch (err) {
       console.error('Login error:', err.message);
-      res.status(500).json({ success: false, message: 'Server error' });
+      res.status(500).json({ success: false, message: 'Server error during login' });
     }
   }
 );
 
-// GET /api/auth/me (protected route)
+// @route   GET /api/auth/me
+// @desc    Get current authenticated user's profile
+// @access  Private (requires authentication token)
 router.get('/me', authMiddleware.protect, async (req, res) => {
   try {
+    // Find user by ID from the authenticated request, exclude password
     const user = await User.findById(req.user.id).select('-password');
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
+    // All non-password fields, including new doctor fields, will be included here automatically
     res.json({ success: true, user });
   } catch (err) {
     console.error('Get me error:', err.message);
@@ -167,17 +256,20 @@ router.get('/me', authMiddleware.protect, async (req, res) => {
   }
 });
 
-// GET /api/auth/doctors (public)
+// @route   GET /api/auth/doctors
+// @desc    Get all doctors
+// @access  Public
 router.get('/doctors', async (req, res) => {
   try {
+    // Find all users with role 'doctor', exclude password, and sort by name
     const doctors = await User.find({ role: 'doctor' })
-      .select('-password')
+      .select('-password') // This will include all new doctor fields
       .sort({ name: 1 });
-      
-    res.json({ 
-      success: true, 
-      count: doctors.length, 
-      data: doctors 
+
+    res.json({
+      success: true,
+      count: doctors.length,
+      data: doctors
     });
   } catch (err) {
     console.error('Get doctors error:', err.message);
@@ -185,43 +277,51 @@ router.get('/doctors', async (req, res) => {
   }
 });
 
-// GET /api/auth/doctors/:id (public)
+// @route   GET /api/auth/doctors/:id
+// @desc    Get a single doctor by ID
+// @access  Public
 router.get('/doctors/:id', async (req, res) => {
   try {
-    const doctor = await User.findOne({ 
-      _id: req.params.id, 
-      role: 'doctor' 
-    }).select('-password');
-    
+    // Find a doctor by ID and role, exclude password
+    const doctor = await User.findOne({
+      _id: req.params.id,
+      role: 'doctor'
+    }).select('-password'); // This will include all new doctor fields
+
     if (!doctor) {
       return res.status(404).json({ success: false, message: 'Doctor not found' });
     }
-    
+
     res.json({ success: true, data: doctor });
   } catch (err) {
     console.error('Get doctor by id error:', err.message);
     if (err.name === 'CastError') {
-      return res.status(404).json({ success: false, message: 'Invalid doctor ID' });
+      return res.status(400).json({ success: false, message: 'Invalid doctor ID format' }); // Changed to 400 for bad format
     }
     res.status(500).json({ success: false, message: 'Server error' });
   }
 });
 
-// DELETE /api/auth/doctors/:id (protected, admin only)
+// @route   DELETE /api/auth/doctors/:id
+// @desc    Delete a doctor by ID
+// @access  Private (protected, admin only)
+// Note: This route is correctly structured based on the previous error log indicating line 211
+//       It already uses `authMiddleware.protect` and `authMiddleware.admin` as handlers.
 router.delete('/doctors/:id', authMiddleware.protect, authMiddleware.admin, async (req, res) => {
   try {
-    const doctor = await User.findOneAndDelete({ 
-      _id: req.params.id, 
-      role: 'doctor' 
+    // Find and delete a doctor by ID and role
+    const doctor = await User.findOneAndDelete({
+      _id: req.params.id,
+      role: 'doctor'
     });
-    
+
     if (!doctor) {
       return res.status(404).json({ success: false, message: 'Doctor not found' });
     }
-    
-    res.json({ 
-      success: true, 
-      message: 'Doctor deleted successfully' 
+
+    res.json({
+      success: true,
+      message: 'Doctor deleted successfully'
     });
   } catch (err) {
     console.error('Delete doctor error:', err.message);
