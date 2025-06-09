@@ -305,9 +305,7 @@ router.get('/doctors/:id', async (req, res) => {
 // @route   DELETE /api/auth/doctors/:id
 // @desc    Delete a doctor by ID
 // @access  Private (protected, admin only)
-// Note: This route is correctly structured based on the previous error log indicating line 211
-//       It already uses `authMiddleware.protect` and `authMiddleware.admin` as handlers.
-router.delete('/doctors/:id', authMiddleware.protect, authMiddleware.admin, async (req, res) => {
+router.delete('/doctors/:id', authMiddleware.protect, authMiddleware.authorize('admin'), async (req, res) => {
   try {
     // Find and delete a doctor by ID and role
     const doctor = await User.findOneAndDelete({
