@@ -30,6 +30,7 @@ const Signup = () => {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showSuccessAnimation, setShowSuccessAnimation] = useState(false); // New state for success animation
 
   // Hook to programmatically navigate users
   const navigate = useNavigate();
@@ -110,22 +111,6 @@ const Signup = () => {
         setError("Hospital Affiliation is required.");
         return false;
       }
-      // Allergies, Medications, Medical History are optional for doctor signup based on common sense,
-      // but if you want them required, uncomment the lines below.
-      /*
-      if (!formData.allergies.trim()) {
-        setError("Allergies information is required.");
-        return false;
-      }
-      if (!formData.medications.trim()) {
-        setError("Medications information is required.");
-        return false;
-      }
-      if (!formData.medicalHistory.trim()) {
-        setError("Medical History is required.");
-        return false;
-      }
-      */
     }
 
     return true; // Form is valid
@@ -172,14 +157,19 @@ const Signup = () => {
         submitData
       );
 
-      setSuccess("Registration successful! Redirecting...");
-      // Store the authentication token received from the backend
-      localStorage.setItem("token", response.data.token);
+      // On successful registration
+      setSuccess("Registration successful!"); // Set success message
+      setShowSuccessAnimation(true); // Show the success animation
 
-      // Redirect the user to their respective dashboard after a short delay
+      // After a delay, hide animation and redirect to login
       setTimeout(() => {
-        navigate(`/${response.data.role}-dashboard`);
-      }, 1500);
+        setShowSuccessAnimation(false);
+        navigate("/login"); // Redirect to the login page
+      }, 3000); // Animation duration + a little extra for user to see
+      
+      // Removed localStorage.setItem("token") as user will log in separately
+      // Removed direct dashboard navigation as user will be redirected to login
+
     } catch (err) {
       // Log and display error messages if the API call fails
       console.error("Signup error:", err.response?.data);
@@ -196,8 +186,8 @@ const Signup = () => {
 
         {/* Display error messages */}
         {error && <p className="error-text" aria-live="polite">{error}</p>}
-        {/* Display success messages */}
-        {success && <p className="success-text" aria-live="polite">{success}</p>}
+        {/* Display success messages (will be hidden when animation is active) */}
+        {success && !showSuccessAnimation && <p className="success-text" aria-live="polite">{success}</p>}
 
         <form onSubmit={handleSubmit} className="signup-form" noValidate>
           {/* Full Name Field */}
@@ -463,6 +453,19 @@ const Signup = () => {
           Already have an account? <Link to="/login">Login here</Link>
         </p>
       </div>
+
+      {/* Success Animation Overlay */}
+      {showSuccessAnimation && (
+        <div className="animation-overlay success-animation-overlay">
+          <div className="success-checkmark-container">
+            <svg className="checkmark" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 52 52">
+              <circle className="checkmark-circle" cx="26" cy="26" r="25" fill="none"/>
+              <path className="checkmark-check" fill="none" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+            </svg>
+          </div>
+          <p className="success-message-text">{success} Redirecting...</p>
+        </div>
+      )}
     </div>
   );
 };
