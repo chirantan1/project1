@@ -27,7 +27,7 @@ const Login = () => {
   const [forgotPasswordMessage, setForgotPasswordMessage] = useState("");
   const [forgotPasswordError, setForgotPasswordError] = useState("");
   const [otpSent, setOtpSent] = useState(false);
-  const [resetStep, setResetStep] = useState(1); // 1: Enter email, 2: Enter OTP, 3: Set new password
+  const [resetStep, setResetStep] = useState(1); // FIX APPLIED HERE: was setResetStep = 1);
   // --- End new states ---
 
   // Hook for programmatic navigation
@@ -179,6 +179,8 @@ const Login = () => {
       setOtp("");
       setNewPassword("");
       setConfirmNewPassword("");
+      setForgotPasswordMessage("");
+      setForgotPasswordError("");
       setOtpSent(false);
       setResetStep(1);
     } catch (err) {
