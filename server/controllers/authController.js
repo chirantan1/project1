@@ -2,6 +2,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User'); // Ensure path is correct
 const { validationResult } = require('express-validator'); // For handling validation middleware errors
+const nodemailer = require("nodemailer"); // Added for email sending
+const generateOtp = require("../utils/otpGenerator"); // Added for OTP generation
+require('dotenv').config(); // Ensure dotenv is configured to access environment variables
 
 // @route   POST /api/auth/signup
 // @desc    Register a new user (patient or doctor)
@@ -18,7 +21,7 @@ const signupUser = async (req, res) => {
     email,
     password,
     role,
-    // Doctor specific fields (only these remain as per the updated schema)
+    // Doctor specific fields
     specialization,
     experience,
     phone,
@@ -70,8 +73,6 @@ const signupUser = async (req, res) => {
       user.phone = undefined;
       user.bio = undefined;
       user.registrationId = undefined;
-      // isActive, availableDays, qualifications, hospitalAffiliation, allergies, medications, medicalHistory
-      // are now completely removed from the schema and thus not set here.
     }
 
     // Save the user to the database
@@ -133,9 +134,12 @@ const loginUser = async (req, res) => {
     return res.json({
       success: true,
       token,
-      role: user.role,
-      id: user._id,
-      name: user.name,
+      user: { // Return user object for role-based redirection on frontend
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role
+      },
     });
   } catch (err) {
     console.error('Login error:', err.message);
@@ -143,7 +147,129 @@ const loginUser = async (req, res) => {
   }
 };
 
+// @desc    Send OTP for password reset
+// @route   POST /api/auth/forgot-password
+// @access  Public
+const forgotPassword = async (req, res) => {
+  const { email } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found with this email." });
+    }
+
+    const otp = generateOtp();
+    const otpExpiry = Date.now() + 10 * 60 * 1000; // OTP valid for 10 minutes
+
+    user.otp = otp;
+    user.otpExpiry = otpExpiry;
+    await user.save();
+
+    // Send OTP via email
+    const transporter = nodemailer.createTransport({
+      service: process.env.EMAIL_SERVICE,
+      auth: {
+        user: process.env.EMAIL_USERNAME,
+        pass: process.env.EMAIL_PASSWORD,
+      },
+    });
+
+    const mailOptions = {
+      from: process.env.EMAIL_FROM,
+      to: user.email,
+      subject: "Password Reset OTP for Patient Management System",
+      html: `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6;">
+          <h2>Password Reset Request</h2>
+          <p>You have requested a password reset for your account.</p>
+          <p>Your One-Time Password (OTP) is: <strong>${otp}</strong></p>
+          <p>This OTP is valid for 10 minutes.</p>
+          <p>If you did not request a password reset, please ignore this email.</p>
+          <p>Thank you,</p>
+          <p>The Patient Management System Team</p>
+        </div>
+      `,
+    };
+
+    await transporter.sendMail(mailOptions);
+
+    res.status(200).json({ message: "OTP sent to your email address." });
+  } catch (error) {
+    console.error("Forgot password error:", error);
+    res.status(500).json({ message: "Server error. Could not send OTP." });
+  }
+};
+
+// @desc    Verify OTP
+// @route   POST /api/auth/verify-otp
+// @access  Public
+const verifyOtp = async (req, res) => {
+  const { email, otp } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    if (!user.otp || user.otp !== otp) {
+      return res.status(400).json({ message: "Invalid OTP." });
+    }
+
+    if (user.otpExpiry < Date.now()) {
+      return res.status(400).json({ message: "OTP has expired. Please request a new one." });
+    }
+
+    res.status(200).json({ message: "OTP verified successfully. You can now reset your password." });
+  } catch (error) {
+    console.error("Verify OTP error:", error);
+    res.status(500).json({ message: "Server error. Could not verify OTP." });
+  }
+};
+
+// @desc    Reset password
+// @route   POST /api/auth/reset-password
+// @access  Public
+const resetPassword = async (req, res) => {
+  const { email, otp, newPassword } = req.body;
+
+  try {
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    if (!user.otp || user.otp !== otp) {
+      return res.status(400).json({ message: "Invalid or expired OTP." });
+    }
+
+    if (user.otpExpiry < Date.now()) {
+      return res.status(400).json({ message: "OTP has expired. Please request a new one." });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    user.otp = undefined; // Clear OTP
+    user.otpExpiry = undefined; // Clear OTP expiry
+
+    await user.save();
+
+    res.status(200).json({ message: "Password reset successfully." });
+  } catch (error) {
+    console.error("Reset password error:", error);
+    res.status(500).json({ message: "Server error. Could not reset password." });
+  }
+};
+
+
 module.exports = {
   signupUser,
-  loginUser
+  loginUser,
+  forgotPassword, // Export the new function
+  verifyOtp,      // Export the new function
+  resetPassword   // Export the new function
 };
