@@ -1,15 +1,23 @@
+/* Root Variables for Consistent Styling */
 :root {
-  --primary-color: #4361ee;
-  --primary-dark: #3a56d5;
-  --secondary-color: #3f37c9;
-  --accent-color: #4895ef;
-  --light-color: #f8f9fa;
-  --dark-color: #212529;
-  --success-color: #4bb543;
-  --error-color: #ff3333;
-  --border-radius: 12px;
-  --box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-  --transition: all 0.3s ease;
+  --primary-color: #4361ee; /* A vibrant blue */
+  --primary-dark: #3a56d5;  /* Darker blue for hover states */
+  --secondary-color: #3f37c9; /* A slightly darker blue/purple */
+  --accent-color: #4895ef;   /* Lighter blue for accents */
+  --light-bg-color: #f0f2f5; /* Light grey background */
+  --white-color: #ffffff;
+  --dark-text-color: #212529; /* Dark grey for text */
+  --medium-text-color: #6c757d; /* Medium grey for secondary text */
+  --success-color: #28a745;  /* Green for success messages/buttons */
+  --success-dark: #218838;   /* Darker green for hover */
+  --error-color: #dc3545;    /* Red for error messages */
+  --error-light-bg: #f8d7da; /* Light red background for errors */
+  --border-radius-sm: 8px;
+  --border-radius-md: 12px;
+  --box-shadow-light: 0 5px 15px rgba(0, 0, 0, 0.1);
+  --box-shadow-medium: 0 10px 30px rgba(0, 0, 0, 0.15);
+  --box-shadow-strong: 0 15px 40px rgba(0, 0, 0, 0.2);
+  --transition-speed: 0.3s;
 }
 
 /* Reset and base styles */
@@ -17,40 +25,44 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Inter', sans-serif; /* Using Inter for consistent font */
 }
 
 /* Page layout */
 .login-page {
-  background-color: var(--light-color);
+  /* Using the inline style in Login.js for background image, but keeping a fallback */
+  background-color: var(--light-bg-color); 
   min-height: 100vh;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column; /* Stack elements vertically */
+  align-items: center;    /* Center horizontally */
+  justify-content: center; /* Center vertically */
   padding: 2rem;
+  box-sizing: border-box;
+  color: var(--dark-text-color); /* Default text color */
 }
 
-.login-container {
-  max-width: 600px;
-  width: 100%;
-  background: white;
-  padding: 2.5rem;
-  border-radius: var(--border-radius);
-  box-shadow: var(--box-shadow);
+/* Main Heading (Page Title) */
+.main-heading {
+  font-size: 2.8em;
+  font-weight: 800;
+  margin-bottom: 2rem;
   text-align: center;
-  animation: fadeIn 0.6s ease-out;
+  max-width: 900px; /* Max width for better readability */
+  color: var(--white-color); /* Adjusted for the background image, assuming text should be white */
+  text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.6); /* Stronger text shadow for readability */
+  animation: fadeInScale 1s ease-out; /* Animation */
 }
 
 /* Animations */
+@keyframes fadeInScale {
+  from { opacity: 0; transform: translateY(-50px) scale(0.9); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes shake {
@@ -80,16 +92,22 @@
   }
 }
 
-/* Headings */
-.main-heading {
-  font-size: 2rem;
-  margin-bottom: 1rem;
-  color: var(--secondary-color);
-  text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+/* Login Form Container */
+.login-container {
+  background-color: rgba(255, 255, 255, 0.95); /* Slightly transparent white background */
+  padding: 2.5rem;
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--box-shadow-strong); /* Stronger shadow for the main container */
+  width: 100%;
+  max-width: 450px; /* Constrain width for better form presentation */
+  box-sizing: border-box;
+  text-align: center;
+  animation: fadeIn 0.7s ease-out; /* Animation for the form container */
+  color: var(--dark-text-color); /* Dark text for form content */
 }
 
 .login-container h2 {
-  color: var(--dark-color);
+  color: var(--primary-color); /* Primary blue for form heading */
   margin-bottom: 1.8rem;
   font-size: 2rem;
   font-weight: 700;
@@ -108,7 +126,7 @@
   border-radius: 2px;
 }
 
-/* Form */
+/* Form Styling */
 .login-form {
   display: flex;
   flex-direction: column;
@@ -124,212 +142,273 @@
 
 .form-group label {
   font-weight: 600;
-  color: var(--dark-color);
+  color: var(--dark-text-color);
   font-size: 0.95rem;
 }
 
 .form-group input {
   padding: 0.8rem 1rem;
-  border: 2px solid #e9ecef;
-  border-radius: var(--border-radius);
+  border: 2px solid #e9ecef; /* Lighter border */
+  border-radius: var(--border-radius-sm);
   font-size: 1rem;
-  background-color: #f8f9fa;
-  transition: var(--transition);
+  background-color: var(--light-bg-color); /* Light background for inputs */
+  transition: all var(--transition-speed) ease;
 }
 
 .form-group input:focus {
   outline: none;
   border-color: var(--primary-color);
   box-shadow: 0 0 0 3px rgba(67, 97, 238, 0.2);
-  background-color: white;
+  background-color: var(--white-color);
 }
 
-/* Buttons */
+/* --- Buttons --- */
+/* Base button styles */
 .submit-btn,
-.admin-btn,
-.verify-btn,
-.close-btn {
+.feature-btn { /* Consolidated main buttons */
   padding: 0.8rem 1.2rem;
   border: none;
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-sm); /* Slightly less rounded than container */
   font-size: 1rem;
   font-weight: bold;
   cursor: pointer;
-  transition: var(--transition);
+  transition: all var(--transition-speed) ease;
   text-transform: uppercase;
+  margin-top: 1rem; /* Default margin for buttons */
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  width: 100%; /* Make feature buttons full width */
 }
 
 .submit-btn {
   background-color: var(--primary-color);
-  color: white;
+  color: var(--white-color);
 }
-.submit-btn:hover {
+.submit-btn:hover:not(:disabled) {
   background-color: var(--primary-dark);
   transform: translateY(-2px);
-  box-shadow: 0 5px 15px rgba(67, 97, 238, 0.3);
+  box-shadow: 0 6px 15px rgba(67, 97, 238, 0.3);
 }
 .submit-btn:disabled {
   background-color: #cccccc;
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+  opacity: 0.8;
 }
 
-.admin-btn {
-  background-color: var(--secondary-color);
-  color: white;
+.ai-assistant-btn {
+  background-color: var(--success-color); /* Green for AI assistant */
+  color: var(--white-color);
 }
-.admin-btn:hover {
+.ai-assistant-btn:hover {
+  background-color: var(--success-dark);
+  transform: translateY(-1px);
+}
+
+.admin-access-trigger-btn {
+  background-color: var(--secondary-color); /* Dark blue/purple for admin access */
+  color: var(--white-color);
+}
+.admin-access-trigger-btn:hover {
   background-color: #3641a7;
+  transform: translateY(-1px);
 }
 
-.verify-btn {
-  background-color: var(--success-color);
-  color: white;
-}
-.verify-btn:hover {
-  background-color: #3da03d;
+/* Modal action buttons (inside modal) */
+.modal-action-btn {
+  padding: 0.7rem 1rem;
+  border-radius: var(--border-radius-sm);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-speed) ease;
+  margin: 5px; /* Spacing between modal buttons */
+  width: calc(50% - 10px); /* Two buttons side-by-side */
 }
 
-.close-btn {
-  background-color: #cccccc;
-  color: #333;
+.modal-action-btn.primary-btn { /* Specificity for primary button in modal */
+  background-color: var(--primary-color);
+  color: var(--white-color);
+  border: none;
 }
-.close-btn:hover {
-  background-color: #bbb;
+.modal-action-btn.primary-btn:hover {
+  background-color: var(--primary-dark);
 }
+
+.modal-action-btn.secondary-btn { /* Specificity for secondary button in modal */
+  background-color: var(--light-bg-color);
+  color: var(--dark-text-color);
+  border: 1px solid #ced4da;
+}
+.modal-action-btn.secondary-btn:hover {
+  background-color: #e2e6ea;
+}
+
 
 /* Error Message */
 .error-text {
   color: var(--error-color);
-  background-color: rgba(255, 51, 51, 0.1);
+  background-color: var(--error-light-bg);
   padding: 0.8rem 1rem;
-  border-radius: var(--border-radius);
+  border-radius: var(--border-radius-sm);
   margin-top: 1rem;
   text-align: center;
   border-left: 4px solid var(--error-color);
   animation: shake 0.5s ease-in-out;
-}
-
-/* Admin Access */
-.admin-access {
-  margin-top: 2rem;
-  padding: 1rem;
-  background-color: var(--light-color);
-  border-radius: 10px;
-  border: 1px solid #ccc;
-  text-align: center;
-}
-
-.admin-access input {
-  padding: 0.6rem;
-  margin-top: 1rem;
-  border-radius: 6px;
-  border: 1px solid #ccc;
-  width: 80%;
-}
-
-/* OTP Modal */
-.otp-modal {
-  margin-top: 1rem;
-  background-color: white;
-  border: 2px solid var(--primary-color);
-  border-radius: 10px;
-  padding: 1.2rem;
-  display: inline-block;
-  animation: fadeIn 0.3s ease-out;
+  font-size: 0.95rem;
 }
 
 /* Register Link */
 .register-link {
   text-align: center;
   margin-top: 1.5rem;
-  color: var(--dark-color);
+  color: var(--medium-text-color);
+  font-size: 0.95rem;
 }
 
 .register-link a {
   color: var(--primary-color);
   text-decoration: none;
   font-weight: 600;
+  transition: all var(--transition-speed) ease;
 }
 .register-link a:hover {
-  color: var(--secondary-color);
+  color: var(--primary-dark);
   text-decoration: underline;
 }
 
-/* Admin Verification Overlay */
+/* Feature Sections (for AI Assistant, Admin) */
+.feature-section {
+  margin-top: 2rem;
+  width: 100%;
+}
+
+.feature-section h3 {
+  font-size: 1.2em;
+  color: var(--dark-text-color);
+  margin-bottom: 15px;
+  font-weight: 600;
+}
+
+/* Modal Overlays */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.6); /* Darker semi-transparent background */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* Ensure it's on top of other content */
+  animation: fadeInOverlay 0.3s ease-out;
+}
+
+.modal-content {
+  background-color: var(--white-color);
+  padding: 30px;
+  border-radius: var(--border-radius-md);
+  box-shadow: var(--box-shadow-medium);
+  width: 90%;
+  max-width: 400px;
+  text-align: center;
+  animation: fadeIn 0.3s ease-out; /* Reusing fadeIn for modal appearance */
+  color: var(--dark-text-color);
+}
+
+.modal-content h4 {
+  color: var(--primary-color);
+  margin-bottom: 20px;
+  font-size: 1.5em;
+}
+
+.modal-content input[type="password"] {
+  width: calc(100% - 20px); /* Adjust for padding */
+  padding: 12px 10px;
+  margin-bottom: 20px;
+  border: 1px solid #ced4da;
+  border-radius: var(--border-radius-sm);
+  font-size: 1em;
+  box-sizing: border-box;
+}
+
+/* Loading Animation Overlay */
 .animation-overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100vw;
   height: 100vh;
-  backdrop-filter: blur(10px);
-  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px); /* Subtle blur effect */
+  background: rgba(0, 0, 0, 0.75); /* More opaque background for loading */
   z-index: 9999;
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
+  color: var(--white-color);
+  font-size: 1.2em;
   animation: fadeInOverlay 0.4s ease-in-out forwards;
-  color: white;
-  text-align: center;
 }
 
 .loader-circle {
-  width: 80px;
-  height: 80px;
-  border: 6px solid transparent;
-  border-top: 6px solid #00d4ff;
+  width: 70px; /* Larger loader */
+  height: 70px;
+  border: 6px solid rgba(255, 255, 255, 0.3);
+  border-top: 6px solid var(--accent-color); /* Accent color for the spinner */
   border-radius: 50%;
   animation: spin 1.2s linear infinite, glowPulse 2s ease-in-out infinite;
   margin-bottom: 20px;
 }
 
-/* Overlay text */
 .animation-overlay p {
   font-size: 1.2rem;
   font-weight: 500;
-  text-shadow: 0 0 5px rgba(0, 212, 255, 0.7);
+  text-shadow: 0 0 8px rgba(0, 212, 255, 0.7); /* Stronger glow for text */
 }
 
-/* Responsive */
+/* Responsive Adjustments */
 @media (max-width: 768px) {
+  .main-heading {
+    font-size: 2.2em;
+    margin-bottom: 1.5rem;
+  }
   .login-container {
-    margin: 1rem;
-    padding: 1.5rem;
+    padding: 2rem;
+    margin-top: 1.5rem;
+  }
+  .login-container h2 {
+    font-size: 1.8em;
+  }
+  .feature-section {
+    margin-top: 1.5rem;
   }
 }
 
 @media (max-width: 480px) {
+  .login-page {
+    padding: 1rem;
+    justify-content: flex-start; /* Align to top on small screens */
+  }
+  .main-heading {
+    font-size: 1.6em;
+    margin-top: 1rem;
+  }
   .login-container {
-    padding: 1.2rem;
+    padding: 1.5rem;
   }
-
   .login-container h2 {
-    font-size: 1.5rem;
+    font-size: 1.6em;
   }
-
-  .submit-btn {
-    padding: 0.8rem;
+  .submit-btn, .feature-btn {
+    padding: 10px;
+    font-size: 0.9em;
   }
-}
-.chatbot-access {
-  margin-top: 1rem;
-  text-align: center;
-}
-
-.chatbot-btn {
-  background-color: #4895ef;
-  color: white;
-  padding: 0.6rem 1.2rem;
-  font-size: 1rem;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
-}
-
-.chatbot-btn:hover {
-  background-color: #3f37c9;
+  .modal-content {
+    padding: 20px;
+  }
+  .modal-action-btn {
+    width: 100%; /* Stack buttons on small screens */
+    margin: 5px 0;
+  }
 }
