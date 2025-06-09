@@ -43,25 +43,14 @@ router.post(
     check('bio', 'Professional Bio is required for doctors')
       .if(check('role').equals('doctor'))
       .trim().notEmpty().isLength({ min: 5 }).withMessage('Bio must be at least 5 characters'),
-
-    // New Doctor-specific fields validation (conditional and optional for some)
-    check('isActive', 'Active status must be a boolean')
-      .if(check('role').equals('doctor'))
-      .isBoolean().optional({ checkFalsy: true }), // Optional, as it has a default in the model
-    check('availableDays', 'Available Days are required for doctors')
-      .if(check('role').equals('doctor'))
-      .trim().notEmpty(),
-    check('qualifications', 'Qualifications are required for doctors')
-      .if(check('role').equals('doctor'))
-      .trim().notEmpty(),
-    check('hospitalAffiliation', 'Hospital Affiliation is required for doctors')
-      .if(check('role').equals('doctor'))
-      .trim().notEmpty(),
     
-    // Allergies, Medications, Medical History are optional for doctors, no `notEmpty()` check
-    check('allergies', 'Allergies must be a string').isString().optional({ checkFalsy: true }),
-    check('medications', 'Medications must be a string').isString().optional({ checkFalsy: true }),
-    check('medicalHistory', 'Medical History must be a string').isString().optional({ checkFalsy: true }),
+    // registrationId is now explicitly required for doctors
+    check('registrationId', 'Registration ID is required for doctors')
+      .if(check('role').equals('doctor'))
+      .trim().notEmpty(),
+
+    // Removed validation checks for isActive, availableDays, qualifications, hospitalAffiliation,
+    // allergies, medications, and medicalHistory as they are no longer handled by the frontend or schema.
   ],
   async (req, res) => {
     // Check for validation errors; if any, send error response and return
@@ -78,14 +67,9 @@ router.post(
       experience,
       phone,
       bio,
-      isActive, // New field
-      availableDays, // New field
-      qualifications, // New field
-      hospitalAffiliation, // New field
-      allergies, // New field (optional for doctor)
-      medications, // New field (optional for doctor)
-      medicalHistory, // New field (optional for doctor)
-    } = req.body; // Destructure all fields from the request body
+      registrationId, // Now explicitly destructured for doctor signup
+      // Removed isActive, availableDays, qualifications, hospitalAffiliation, allergies, medications, medicalHistory
+    } = req.body; // Destructure only the necessary fields from the request body
 
     try {
       // Check if a user with the given email already exists
@@ -112,14 +96,16 @@ router.post(
         user.experience = Number(experience); // Ensure experience is stored as a number
         user.phone = phone;
         user.bio = bio;
-        user.isActive = typeof isActive === 'boolean' ? isActive : true; // Use provided boolean or default to true
-        user.availableDays = availableDays;
-        user.qualifications = qualifications;
-        user.hospitalAffiliation = hospitalAffiliation;
-        // Assign optional fields if they exist in the request body
-        if (allergies) user.allergies = allergies;
-        if (medications) user.medications = medications;
-        if (medicalHistory) user.medicalHistory = medicalHistory;
+        user.registrationId = registrationId; // Assign the registration ID
+        // isActive, availableDays, qualifications, hospitalAffiliation, allergies, medications, medicalHistory
+        // are no longer set here as per the updated schema and frontend
+      } else {
+        // For patients, ensure doctor-specific fields are not stored
+        user.specialization = undefined;
+        user.experience = undefined;
+        user.phone = undefined;
+        user.bio = undefined;
+        user.registrationId = undefined;
       }
 
       // Save the new user to the database
@@ -137,13 +123,9 @@ router.post(
           experience: user.experience,
           phone: user.phone,
           bio: user.bio,
-          isActive: user.isActive,
-          availableDays: user.availableDays,
-          qualifications: user.qualifications,
-          hospitalAffiliation: user.hospitalAffiliation,
-          allergies: user.allergies,
-          medications: user.medications,
-          medicalHistory: user.medicalHistory,
+          registrationId: user.registrationId,
+          // isActive, availableDays, qualifications, hospitalAffiliation, allergies, medications, medicalHistory
+          // are no longer included in payload
         })
       };
 
@@ -159,7 +141,10 @@ router.post(
       });
     } catch (err) {
       console.error('Signup error:', err.message);
-      // More detailed error for debugging: console.error('Signup error details:', err);
+      // Handle potential duplicate registrationId errors from Mongoose unique index
+      if (err.code === 11000 && err.keyPattern && err.keyPattern.registrationId) {
+        return res.status(400).json({ success: false, message: 'A doctor with this Registration ID already exists.' });
+      }
       res.status(500).json({ success: false, message: 'Server error during registration' });
     }
   }
@@ -202,19 +187,15 @@ router.post(
         name: user.name,
         email: user.email,
         phone: user.phone, // Phone might be common to both roles
-        
+
         // Include doctor specific fields in payload if applicable
         ...(user.role === 'doctor' && {
           specialization: user.specialization,
           experience: user.experience,
           bio: user.bio,
-          isActive: user.isActive,
-          availableDays: user.availableDays,
-          qualifications: user.qualifications,
-          hospitalAffiliation: user.hospitalAffiliation,
-          allergies: user.allergies,
-          medications: user.medications,
-          medicalHistory: user.medicalHistory,
+          registrationId: user.registrationId,
+          // isActive, availableDays, qualifications, hospitalAffiliation, allergies, medications, medicalHistory
+          // are no longer included in payload
         }),
         // Add patient specific fields if applicable (if your patient schema has more fields)
         ...(user.role === 'patient' && {
