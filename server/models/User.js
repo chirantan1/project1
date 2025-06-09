@@ -5,55 +5,43 @@ const UserSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true, select: false }, // password should not be returned by default queries
   role: { type: String, enum: ['patient', 'doctor', 'admin'], required: true }, // Added 'admin' as a possible role
-  
+
   // Doctor specific fields (only present if role is 'doctor')
-  specialization: { 
-    type: String, 
+  specialization: {
+    type: String,
     // Conditional requirement: required if role is 'doctor'
-    required: function() { return this.role === 'doctor'; } 
+    required: function() { return this.role === 'doctor'; }
   },
-  experience: { 
-    type: Number, 
-    min: 0, 
+  experience: {
+    type: Number,
+    min: 0,
     // Conditional requirement
-    required: function() { return this.role === 'doctor'; } 
+    required: function() { return this.role === 'doctor'; }
   },
-  phone: { 
-    type: String, 
+  phone: {
+    type: String,
     // Conditional requirement
-    required: function() { return this.role === 'doctor'; } 
+    required: function() { return this.role === 'doctor'; }
   },
-  bio: { 
-    type: String, 
+  bio: {
+    type: String,
     // Conditional requirement
-    required: function() { return this.role === 'doctor'; } 
+    required: function() { return this.role === 'doctor'; }
   },
-  isActive: { 
-    type: Boolean, 
-    default: true, 
-    // Only applies to doctors, but can be present for patients as false or omitted
-    required: function() { return this.role === 'doctor'; } 
-  },
-  availableDays: { 
-    type: String, // Store as a string, e.g., "Monday, Wednesday, Friday"
-    // Conditional requirement
-    required: function() { return this.role === 'doctor'; } 
-  },
-  qualifications: { 
-    type: String, 
-    // Conditional requirement
-    required: function() { return this.role === 'doctor'; } 
-  },
-  hospitalAffiliation: { 
-    type: String, 
-    // Conditional requirement
-    required: function() { return this.role === 'doctor'; } 
+  // Removed: isActive, availableDays, qualifications, hospitalAffiliation
+  // As per your request, these fields are removed from the schema.
+
+  // **NEW**: Registration ID for doctors
+  registrationId: {
+    type: String,
+    unique: true, // Ensure each doctor has a unique registration ID
+    sparse: true, // Allows null values, so patients/admins don't need this field
+    required: function() { return this.role === 'doctor'; } // Required only if role is 'doctor'
   },
 
-  // Optional: Patient-like fields, which might also be relevant for doctors in some contexts
-  allergies: { type: String, default: '' },
-  medications: { type: String, default: '' },
-  medicalHistory: { type: String, default: '' },
+  // Removed: Optional patient-like fields (allergies, medications, medicalHistory)
+  // As per your request, these fields are removed from the schema.
+
 }, {
   timestamps: true // Adds createdAt and updatedAt timestamps automatically
 });

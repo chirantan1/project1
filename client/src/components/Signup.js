@@ -15,15 +15,7 @@ const Signup = () => {
     experience: "",
     phone: "",
     bio: "",
-    // New fields for doctor profile
-    isActive: true, // Default to true for new doctor accounts
-    availableDays: "", // e.g., "Monday, Wednesday, Friday"
-    qualifications: "", // e.g., "MD, PhD, FRCS"
-    hospitalAffiliation: "", // e.g., "City General Hospital"
-    // Though typically patient-related, added for doctor signup as per request
-    allergies: "", // e.g., "Penicillin, Dust"
-    medications: "", // e.g., "Insulin, Metformin"
-    medicalHistory: "", // e.g., "No significant history"
+    registrationId: "", // Keep registrationId for doctors
   });
 
   // State for displaying error, success messages, and loading status
@@ -40,7 +32,7 @@ const Signup = () => {
     const { name, value, type, checked } = e.target;
     setFormData((prev) => ({
       ...prev,
-      [name]: type === "checkbox" ? checked : value, // Handle checkbox boolean values
+      [name]: type === "checkbox" ? checked : value, // Handle checkbox boolean values if any were still present
     }));
   };
 
@@ -99,16 +91,8 @@ const Signup = () => {
         setError("Professional Bio is required.");
         return false;
       }
-      if (!formData.availableDays.trim()) {
-        setError("Available Days are required.");
-        return false;
-      }
-      if (!formData.qualifications.trim()) {
-        setError("Qualifications are required.");
-        return false;
-      }
-      if (!formData.hospitalAffiliation.trim()) {
-        setError("Hospital Affiliation is required.");
+      if (!formData.registrationId.trim()) {
+        setError("Registration ID is required for doctors.");
         return false;
       }
     }
@@ -142,13 +126,7 @@ const Signup = () => {
         submitData.experience = Number(formData.experience); // Ensure it's a number
         submitData.phone = formData.phone;
         submitData.bio = formData.bio;
-        submitData.isActive = formData.isActive; // Send boolean value
-        submitData.availableDays = formData.availableDays;
-        submitData.qualifications = formData.qualifications;
-        submitData.hospitalAffiliation = formData.hospitalAffiliation;
-        submitData.allergies = formData.allergies; // Include even if optional
-        submitData.medications = formData.medications; // Include even if optional
-        submitData.medicalHistory = formData.medicalHistory; // Include even if optional
+        submitData.registrationId = formData.registrationId;
       }
 
       // Make the POST request to the signup API endpoint
@@ -166,9 +144,6 @@ const Signup = () => {
         setShowSuccessAnimation(false);
         navigate("/login"); // Redirect to the login page
       }, 3000); // Animation duration + a little extra for user to see
-      
-      // Removed localStorage.setItem("token") as user will log in separately
-      // Removed direct dashboard navigation as user will be redirected to login
 
     } catch (err) {
       // Log and display error messages if the API call fails
@@ -339,103 +314,18 @@ const Signup = () => {
                 />
               </div>
 
-              {/* New Doctor-Specific Fields */}
-              <div className="form-group checkbox-group">
-                <input
-                  id="isActive"
-                  name="isActive"
-                  type="checkbox"
-                  checked={formData.isActive}
-                  onChange={handleChange}
-                  aria-required="true"
-                />
-                <label htmlFor="isActive">Active Status</label>
-              </div>
-
+              {/* Registration ID Field */}
               <div className="form-group">
-                <label htmlFor="availableDays">Available Days<span className="required-star">*</span></label>
+                <label htmlFor="registrationId">Registration ID<span className="required-star">*</span></label>
                 <input
-                  id="availableDays"
-                  name="availableDays"
+                  id="registrationId"
+                  name="registrationId"
                   type="text"
-                  placeholder="e.g., Monday, Wednesday, Friday"
-                  value={formData.availableDays}
+                  placeholder="e.g., REG123456"
+                  value={formData.registrationId}
                   onChange={handleChange}
                   required
                   aria-required="true"
-                  autoComplete="off"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="qualifications">Qualifications<span className="required-star">*</span></label>
-                <textarea
-                  id="qualifications"
-                  name="qualifications"
-                  placeholder="e.g., MD from ABC University, Board Certified in Internal Medicine"
-                  value={formData.qualifications}
-                  onChange={handleChange}
-                  required
-                  rows={2}
-                  aria-required="true"
-                  autoComplete="off"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="hospitalAffiliation">Hospital Affiliation<span className="required-star">*</span></label>
-                <input
-                  id="hospitalAffiliation"
-                  name="hospitalAffiliation"
-                  type="text"
-                  placeholder="e.g., St. Jude Medical Center"
-                  value={formData.hospitalAffiliation}
-                  onChange={handleChange}
-                  required
-                  aria-required="true"
-                  autoComplete="off"
-                />
-              </div>
-
-              {/* Optional: Patient-like fields if applicable for doctors */}
-              <div className="form-group">
-                <label htmlFor="allergies">Allergies (Optional)</label>
-                <textarea
-                  id="allergies"
-                  name="allergies"
-                  type="text"
-                  placeholder="Any known allergies? (e.g., Penicillin, Latex)"
-                  value={formData.allergies}
-                  onChange={handleChange}
-                  rows={2}
-                  autoComplete="off"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="medications">Current Medications (Optional)</label>
-                <textarea
-                  id="medications"
-                  name="medications"
-                  type="text"
-                  placeholder="Are you currently on any medications? (e.g., Metformin, Lisinopril)"
-                  value={formData.medications}
-                  onChange={handleChange}
-                  rows={2}
-                  autoComplete="off"
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="medicalHistory">Past Medical History (Optional)</label>
-                <textarea
-                  id="medicalHistory"
-                  name="medicalHistory"
-                  type="text"
-                  placeholder="Briefly describe any significant past medical history."
-                  value={formData.medicalHistory}
-                  onChange={handleChange}
-                  rows={3}
                   autoComplete="off"
                 />
               </div>

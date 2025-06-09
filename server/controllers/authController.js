@@ -18,19 +18,13 @@ const signupUser = async (req, res) => {
     email,
     password,
     role,
-    // Doctor specific fields
+    // Doctor specific fields (only these remain as per the updated schema)
     specialization,
     experience,
     phone,
     bio,
-    isActive,
-    availableDays,
-    qualifications,
-    hospitalAffiliation,
-    allergies,
-    medications,
-    medicalHistory,
-  } = req.body; // Destructure all possible fields from request body
+    registrationId, // Now explicitly included for doctor signup
+  } = req.body; // Destructure only the necessary fields from request body
 
   try {
     // Check if user already exists
@@ -51,20 +45,33 @@ const signupUser = async (req, res) => {
       role,
     });
 
-    // Conditionally add doctor-specific fields
+    // Conditionally add doctor-specific fields and handle registrationId
     if (role === 'doctor') {
+      // Validate and assign doctor-specific fields
       user.specialization = specialization;
       user.experience = experience;
       user.phone = phone;
       user.bio = bio;
-      user.isActive = isActive; // Boolean value
-      user.availableDays = availableDays;
-      user.qualifications = qualifications;
-      user.hospitalAffiliation = hospitalAffiliation;
-      // These fields are optional for doctors, save if provided
-      user.allergies = allergies || '';
-      user.medications = medications || '';
-      user.medicalHistory = medicalHistory || '';
+
+      // Check for unique registrationId for doctors
+      if (!registrationId) {
+        return res.status(400).json({ success: false, message: 'Registration ID is required for doctors.' });
+      }
+
+      const existingDoctorWithId = await User.findOne({ registrationId, role: 'doctor' });
+      if (existingDoctorWithId) {
+        return res.status(400).json({ success: false, message: 'A doctor with this Registration ID already exists.' });
+      }
+      user.registrationId = registrationId; // Assign the registration ID
+    } else {
+      // For patients, ensure doctor-specific fields are not stored
+      user.specialization = undefined;
+      user.experience = undefined;
+      user.phone = undefined;
+      user.bio = undefined;
+      user.registrationId = undefined;
+      // isActive, availableDays, qualifications, hospitalAffiliation, allergies, medications, medicalHistory
+      // are now completely removed from the schema and thus not set here.
     }
 
     // Save the user to the database
@@ -85,6 +92,10 @@ const signupUser = async (req, res) => {
     });
   } catch (err) {
     console.error('Signup error:', err.message);
+    // Handle potential duplicate registrationId errors if the sparse unique index fails
+    if (err.code === 11000 && err.keyPattern && err.keyPattern.registrationId) {
+      return res.status(400).json({ success: false, message: 'A doctor with this Registration ID already exists.' });
+    }
     return res.status(500).json({ success: false, message: 'Server error' });
   }
 };
