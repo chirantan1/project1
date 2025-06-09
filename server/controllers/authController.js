@@ -3,7 +3,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User'); // Ensure path is correct
 const { validationResult } = require('express-validator'); // For handling validation middleware errors
 // const nodemailer = require("nodemailer"); // REMOVED: No longer needed here, moved to emailSender utility
-const { generateOtp } = require("../utils/otpGenerator"); // Correct import for generateOtp
+const generateOtp = require("../utils/otpGenerator"); // <--- THIS IMPORT IS CORRECT for your otpGenerator.js
 const sendEmail = require('../utils/emailSender'); // ADDED: Import sendEmail utility
 require('dotenv').config(); // Ensure dotenv is configured to access environment variables
 
@@ -186,7 +186,7 @@ const forgotPassword = async (req, res) => {
             return res.status(200).json({ success: true, message: "If an account with that email exists, an OTP has been sent." });
         }
 
-        const otp = generateOtp();
+        const otp = generateOtp(); // Correctly calls the imported generateOtp function
         const otpExpiry = Date.now() + 10 * 60 * 1000; // OTP valid for 10 minutes (in milliseconds)
 
         user.otp = otp;
@@ -280,14 +280,12 @@ const resetPassword = async (req, res) => {
 
         // Check if OTP matches and is not expired
         if (!user.otp || user.otp !== otp || user.otpExpiry < Date.now()) {
-            // If OTP is invalid or expired, clear it from user record
             user.otp = undefined;
             user.otpExpiry = undefined;
             await user.save();
             return res.status(400).json({ success: false, message: "Invalid or expired OTP." });
         }
 
-        // Hash the new password
         const salt = await bcrypt.genSalt(10);
         user.password = await bcrypt.hash(newPassword, salt);
         user.otp = undefined; // Clear OTP after successful reset
@@ -306,7 +304,7 @@ const resetPassword = async (req, res) => {
 module.exports = {
     signupUser,
     loginUser,
-    forgotPassword, // Export the new function
-    verifyOtp,      // Export the new function
-    resetPassword   // Export the new function
+    forgotPassword,
+    verifyOtp,
+    resetPassword
 };
