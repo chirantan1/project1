@@ -5,7 +5,7 @@ const { check, validationResult } = require('express-validator');
 
 const User = require('../models/User'); // Ensure correct path to your User model
 const authMiddleware = require('../middleware/auth'); // Assuming this path is correct
-const authController = require('../controllers/authController'); // ADDED: Import authController
+const authController = require('../controllers/authController'); // IMPORTANT: Ensure authController is imported
 
 const router = express.Router();
 
@@ -50,97 +50,8 @@ router.post(
             .if(check('role').equals('doctor'))
             .trim().notEmpty(),
     ],
-    async (req, res) => {
-        // Check for validation errors; if any, send error response and return
-        if (handleValidationErrors(req, res)) {
-            return;
-        }
-
-        const {
-            name,
-            email,
-            password,
-            role,
-            specialization,
-            experience,
-            phone,
-            bio,
-            registrationId,
-        } = req.body;
-
-        try {
-            // Check if a user with the given email already exists
-            let user = await User.findOne({ email });
-            if (user) {
-                return res.status(400).json({ success: false, message: 'User already exists with this email' });
-            }
-
-            // Hash the password
-            const salt = await bcrypt.genSalt(10);
-            const hashedPassword = await bcrypt.hash(password, salt);
-
-            // Create a new User instance
-            user = new User({
-                name,
-                email,
-                password: hashedPassword,
-                role,
-            });
-
-            // Conditionally assign doctor-specific fields if the role is 'doctor'
-            if (role === 'doctor') {
-                user.specialization = specialization;
-                user.experience = Number(experience);
-                user.phone = phone;
-                user.bio = bio;
-                user.registrationId = registrationId;
-            } else {
-                // For patients, ensure doctor-specific fields are not stored
-                user.specialization = undefined;
-                user.experience = undefined;
-                user.phone = undefined;
-                user.bio = undefined;
-                user.registrationId = undefined;
-            }
-
-            // Save the new user to the database
-            await user.save();
-
-            // Create JWT payload (including relevant user data for client-side)
-            const payload = {
-                id: user._id,
-                role: user.role,
-                name: user.name,
-                email: user.email,
-                // Include doctor specific fields in payload if applicable
-                ...(user.role === 'doctor' && {
-                    specialization: user.specialization,
-                    experience: user.experience,
-                    phone: user.phone,
-                    bio: user.bio,
-                    registrationId: user.registrationId,
-                })
-            };
-
-            // Sign the JWT token
-            const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
-
-            // Send success response with token and user data
-            res.status(201).json({
-                success: true,
-                message: 'User registered successfully',
-                token,
-                user: payload
-            });
-        } catch (err) {
-            console.error('Signup error:', err.message);
-            // Handle potential duplicate registrationId errors from Mongoose unique index
-            if (err.code === 11000 && err.keyPattern && err.keyPattern.registrationId) {
-                return res.status(400).json({ success: false, message: 'A doctor with this Registration ID already exists.' });
-            }
-            res.status(500).json({ success: false, message: 'Server error during registration' });
-        }
-    }
+    // The actual logic is now in authController.signupUser
+    authController.signupUser
 );
 
 // @route   POST /api/auth/login
@@ -152,76 +63,28 @@ router.post(
         check('email', 'Please include a valid email').isEmail(),
         check('password', 'Password is required').exists(),
     ],
-    async (req, res) => {
-        // Check for validation errors; if any, send error response and return
-        if (handleValidationErrors(req, res)) {
-            return;
-        }
-
-        const { email, password } = req.body;
-
-        try {
-            // Find user and explicitly select the password field
-            const user = await User.findOne({ email }).select('+password');
-            if (!user) {
-                return res.status(401).json({ success: false, message: 'Invalid credentials' });
-            }
-
-            // Compare the provided password with the hashed password in the database
-            const isMatch = await bcrypt.compare(password, user.password);
-            if (!isMatch) {
-                return res.status(401).json({ success: false, message: 'Invalid credentials' });
-            }
-
-            // Create JWT payload (including all relevant user data)
-            const payload = {
-                id: user._id,
-                role: user.role,
-                name: user.name,
-                email: user.email,
-                phone: user.phone, // Phone might be common to both roles
-
-                // Include doctor specific fields in payload if applicable
-                ...(user.role === 'doctor' && {
-                    specialization: user.specialization,
-                    experience: user.experience,
-                    bio: user.bio,
-                    registrationId: user.registrationId,
-                }),
-                // Add patient specific fields if applicable (if your patient schema has more fields)
-                ...(user.role === 'patient' && {
-                    // examplePatientField: user.examplePatientField
-                })
-            };
-
-            // Sign the JWT token
-            const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '1d' });
-
-            // Send success response with token and user data
-            res.json({
-                success: true,
-                token,
-                user: payload
-            });
-        } catch (err) {
-            console.error('Login error:', err.message);
-            res.status(500).json({ success: false, message: 'Server error during login' });
-        }
-    }
+    // The actual logic is now in authController.loginUser
+    authController.loginUser
 );
 
-// ADDED: Forgot Password Route (POST)
+// --- Forgot Password Related Routes ---
 // @route   POST /api/auth/forgot-password
 // @desc    Initiate password reset process (send OTP)
 // @access  Public
 router.post('/forgot-password', authController.forgotPassword);
 
 
-// ADDED: Reset Password Route (POST)
+// @route   POST /api/auth/verify-otp
+// @desc    Verify OTP
+// @access  Public
+router.post('/verify-otp', authController.verifyOtp); // ⭐ ADDED: This line was missing or incorrect!
+
+
 // @route   POST /api/auth/reset-password
 // @desc    Verify OTP and reset user's password
 // @access  Public
-router.post('/reset-password', authController.resetPassword);
+router.post('/reset-password', authController.resetPassword); // ⭐ ADDED: This line was also missing!
+// --- End Forgot Password Related Routes ---
 
 
 // @route   GET /api/auth/me
