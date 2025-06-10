@@ -3,7 +3,6 @@ import axios from "axios";
 import { useNavigate, useLocation } from "react-router-dom";
 import "./BookAppointment.css";
 
-// Axios instance using production baseURL
 const api = axios.create({
   baseURL: "https://project1-backend-d55g.onrender.com/api",
   headers: {
@@ -12,32 +11,32 @@ const api = axios.create({
 });
 
 const BookAppointment = () => {
-  // Get today's date in YYYY-MM-DD format for the date input's min attribute
   const getTodayDate = () => {
     const today = new Date();
     const year = today.getFullYear();
-    const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+    const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
     return `${year}-${month}-${day}`;
   };
 
+  // Initialize formData with proper values
   const [formData, setFormData] = useState({
-    date: getTodayDate(), // Default to today's date
-    time: "10:00", // Default time, ensure it matches HH:MM format
+    date: getTodayDate(),
+    time: "10:00", // Default time in correct format
     symptoms: "",
   });
+
   const [doctor, setDoctor] = useState(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState(false);
-  const [validationErrors, setValidationErrors] = useState({}); // New state for detailed validation errors
+  const [validationErrors, setValidationErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-  const [todayDate, setTodayDate] = useState(getTodayDate()); // State for min date attribute
+  const [todayDate] = useState(getTodayDate());
 
   useEffect(() => {
     const fetchDoctorDetails = async () => {
-      // Clear previous error messages on component mount
       setMessage("");
       setError(false);
       setValidationErrors({});
@@ -61,15 +60,18 @@ const BookAppointment = () => {
     };
 
     fetchDoctorDetails();
-  }, [location.state]); // Dependency array includes location.state
+  }, [location.state]);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-    // Clear specific validation error for the field being changed
-    if (validationErrors[e.target.name]) {
-      setValidationErrors(prev => ({ ...prev, [e.target.name]: undefined }));
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+    
+    if (validationErrors[name]) {
+      setValidationErrors(prev => ({ ...prev, [name]: undefined }));
     }
-    // Also clear general messages when user starts typing again
     setMessage("");
     setError(false);
   };
@@ -78,84 +80,73 @@ const BookAppointment = () => {
     e.preventDefault();
     setMessage("");
     setError(false);
-    setValidationErrors({}); // Clear previous validation errors
+    setValidationErrors({});
     setLoading(true);
 
-    // Basic client-side validation before sending
-    if (!formData.date || !formData.time || !formData.symptoms) {
-      setMessage("All fields are required.");
+    // Enhanced client-side validation
+    const errors = {};
+    if (!formData.date) errors.date = "Please select a date";
+    if (!formData.time) errors.time = "Please select a time";
+    if (!formData.symptoms.trim()) errors.symptoms = "Please describe your symptoms";
+
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
+      setMessage("Please fill all required fields");
       setError(true);
       setLoading(false);
       return;
     }
 
-    // This console.log is crucial for debugging what you're actually sending
-    console.log("Attempting to book appointment with data:", {
+    const appointmentData = {
       doctorId: location.state?.doctorId,
       date: formData.date,
       time: formData.time,
       symptoms: formData.symptoms,
-    });
+    };
+
+    console.log("Submitting appointment data:", appointmentData);
 
     try {
       api.defaults.headers.Authorization = `Bearer ${localStorage.getItem("token")}`;
 
-      const response = await api.post("/appointments", {
-        doctorId: location.state?.doctorId,
-        date: formData.date,
-        time: formData.time,
-        symptoms: formData.symptoms,
-      });
+      const response = await api.post("/appointments", appointmentData);
 
       if (response.data.success) {
         setMessage("Appointment booked successfully!");
         setTimeout(() => navigate("/patient-dashboard"), 1800);
       } else {
-        // This 'else' block might be hit if the backend sends `success: false`
-        // but not necessarily due to express-validator (e.g., slot already booked)
         setMessage(response.data.message || "Booking failed.");
         setError(true);
       }
     } catch (err) {
-      // --- START: Enhanced Error Logging ---
-      console.error("Booking error details (from backend):", JSON.stringify(err.response?.data, null, 2));
-      console.error("Booking error (raw Axios error object):", err);
-      // --- END: Enhanced Error Logging ---
+      console.error("Booking error:", {
+        response: err.response?.data,
+        error: err
+      });
 
-      if (err.response && err.response.data) {
-        const backendResponse = err.response.data;
-        if (backendResponse.errors && Array.isArray(backendResponse.errors)) {
-          // This path is for express-validator errors (e.g., if you return errors.array())
-          const newValidationErrors = {};
-          backendResponse.errors.forEach(errorItem => {
-            if (errorItem.param) {
-              newValidationErrors[errorItem.param] = errorItem.msg;
-            }
-          });
-          setValidationErrors(newValidationErrors);
-          setMessage("Please correct the highlighted errors.");
-          setError(true);
-        } else if (backendResponse.errors && typeof backendResponse.errors === 'object' && !Array.isArray(backendResponse.errors)) {
-            // This path is for the specific { "time": {} } error format you showed
-            // or if you custom-formatted errors as an object of objects
-            const newValidationErrors = {};
-            for (const key in backendResponse.errors) {
-                // If the error value is an object, try to get its message or just note its presence
-                newValidationErrors[key] = backendResponse.errors[key].message || `Invalid ${key} format.`;
-            }
-            setValidationErrors(newValidationErrors);
-            setMessage(backendResponse.message || "Validation failed. Please check your inputs.");
-            setError(true);
-        } else {
-          // Fallback for other backend errors (e.g., custom messages like "slot already booked")
-          setMessage(backendResponse.message || "Booking failed due to a server error.");
-          setError(true);
+      if (err.response?.data) {
+        const { errors: backendErrors, message: backendMessage } = err.response.data;
+        
+        if (backendErrors) {
+          // Handle both express-validator array format and mongoose error object format
+          const formattedErrors = Array.isArray(backendErrors)
+            ? backendErrors.reduce((acc, error) => ({ ...acc, [error.path || error.param]: error.msg }), {})
+            : Object.keys(backendErrors).reduce((acc, key) => {
+                const errorObj = backendErrors[key];
+                return {
+                  ...acc,
+                  [key]: errorObj.message || `Invalid ${key}`
+                };
+              }, {});
+
+          setValidationErrors(formattedErrors);
         }
+        
+        setMessage(backendMessage || "Booking failed. Please check your inputs.");
       } else {
-        // Network errors or other unhandled exceptions
-        setMessage(err.message || "Booking failed. Please check your internet connection.");
-        setError(true);
+        setMessage(err.message || "An error occurred. Please try again.");
       }
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -184,8 +175,8 @@ const BookAppointment = () => {
             name="date"
             value={formData.date}
             onChange={handleChange}
-            required
-            min={todayDate} // Use the calculated today's date
+            min={todayDate}
+            className={validationErrors.date ? "error-input" : ""}
           />
           {validationErrors.date && <p className="error-text">{validationErrors.date}</p>}
         </div>
@@ -197,12 +188,13 @@ const BookAppointment = () => {
             name="time"
             value={formData.time}
             onChange={handleChange}
-            required
+            className={validationErrors.time ? "error-input" : ""}
           >
-            {/* These options are already in HH:MM format, which is good */}
+            <option value="09:00">9:00 AM</option>
             <option value="10:00">10:00 AM</option>
             <option value="11:00">11:00 AM</option>
             <option value="12:00">12:00 PM</option>
+            <option value="13:00">1:00 PM</option>
             <option value="14:00">2:00 PM</option>
             <option value="15:00">3:00 PM</option>
             <option value="16:00">4:00 PM</option>
@@ -219,7 +211,7 @@ const BookAppointment = () => {
             onChange={handleChange}
             placeholder="Describe your symptoms or reason for the appointment"
             rows={4}
-            required
+            className={validationErrors.symptoms ? "error-input" : ""}
           />
           {validationErrors.symptoms && <p className="error-text">{validationErrors.symptoms}</p>}
         </div>
