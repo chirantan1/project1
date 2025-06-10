@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 import { usePDF } from "react-to-pdf"; // For client-side PDF generation
@@ -22,10 +22,10 @@ const DoctorDashboard = () => {
   const [prescriptionData, setPrescriptionData] = useState({
     patientId: "",
     medicines: "", // medicines as a single string, one per line
-    dosage: "",     // dosage as a single string, one per line (matching medicines)
+    dosage: "", // dosage as a single string, one per line (matching medicines)
     instructions: "", // additional general instructions
     followUpDate: "",
-    diagnosis: ""
+    diagnosis: "",
   });
 
   const navigate = useNavigate();
@@ -33,14 +33,40 @@ const DoctorDashboard = () => {
   const { toPDF, targetRef } = usePDF({ filename: "medical-prescription.pdf" });
 
   // --- Axios Instance Configuration ---
-  // The API instance is created once. Its headers will be updated dynamically.
   const api = axios.create({
-    // CORRECTED: Removed extra brackets and parentheses from baseURL
-    baseURL: "https://project1-backend-d55g.onrender.com/api", 
+    baseURL: "https://project1-backend-d55g.onrender.com/api",
     headers: {
       "Content-Type": "application/json",
-    }
+    },
   });
+
+  // Request Interceptor to attach token
+  api.interceptors.request.use(
+    (config) => {
+      const token = localStorage.getItem("token");
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      }
+      return config;
+    },
+    (error) => {
+      return Promise.reject(error);
+    }
+  );
+
+  // Response Interceptor to handle unauthorized errors
+  api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+      if (error.response?.status === 401) {
+        localStorage.removeItem("token");
+        navigate("/login");
+        setError("Session expired. Please log in again.");
+        clearMessages();
+      }
+      return Promise.reject(error);
+    }
+  );
 
   // --- Utility Functions ---
 
@@ -58,43 +84,23 @@ const DoctorDashboard = () => {
   // Fetch user data (doctor's own profile)
   const fetchUserData = useCallback(async () => {
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        navigate("/login");
-        return;
-      }
-      // Set the authorization header for this specific API instance's default headers
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+      setLoading(true); // Indicate loading for user data
       const response = await api.get("/auth/me");
       setUser(response.data);
     } catch (err) {
       console.error("Error fetching user data:", err);
-      // If unauthorized or token expired, log out
-      if (err.response?.status === 401) {
-        localStorage.removeItem("token");
-        navigate("/login");
-        setError("Session expired. Please log in again.");
-        clearMessages();
-      } else {
-        setError("Failed to load doctor's profile.");
-        clearMessages();
-      }
+      setError("Failed to load doctor's profile.");
+      clearMessages();
+    } finally {
+      setLoading(false);
     }
-  }, [navigate, clearMessages]); // Depend on navigate and clearMessages
+  }, [clearMessages, api]); // Depend on clearMessages and api instance
 
   // Fetch appointments for the logged-in doctor
   const fetchAppointments = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        navigate("/login");
-        setLoading(false);
-        return;
-      }
-      // Ensure token is set for this API call as well
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       const response = await api.get("/appointments/doctor");
 
       if (response.data?.success) {
@@ -105,137 +111,103 @@ const DoctorDashboard = () => {
       }
     } catch (err) {
       console.error("Fetch appointments error:", err);
-      if (err.response?.status === 401) {
-        localStorage.removeItem("token");
-        navigate("/login");
-        setError("Session expired. Please log in again.");
-        clearMessages();
-      } else {
-        setError(err.response?.data?.message || "Failed to load appointments.");
-        clearMessages();
-      }
+      setError(err.response?.data?.message || "Failed to load appointments.");
+      clearMessages();
     } finally {
       setLoading(false);
     }
-  }, [navigate, clearMessages]); // Depend on navigate and clearMessages
+  }, [clearMessages, api]); // Depend on clearMessages and api instance
 
   // Update appointment status (e.g., pending -> confirmed, confirmed -> completed)
-  const handleStatusChange = useCallback(async (id, newStatus) => {
-    setLoading(true);
-    setError("");
-    setSuccess("");
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        navigate("/login");
-        setLoading(false);
-        setError("Authentication token missing. Please log in again.");
-        clearMessages();
-        return;
-      }
-      // CRITICAL FIX: Ensure the Authorization header is set before making this request
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-      const response = await api.put(`/appointments/${id}/status`, { status: newStatus });
+  const handleStatusChange = useCallback(
+    async (id, newStatus) => {
+      setLoading(true);
+      setError("");
+      setSuccess("");
+      try {
+        const response = await api.put(`/appointments/${id}/status`, {
+          status: newStatus,
+        });
 
-      if (response.data.success) {
-        setSuccess(`Appointment ${newStatus} successfully!`);
-        fetchAppointments(); // Re-fetch appointments to update the list
-        clearMessages();
-      } else {
-        setError(response.data.message || "Failed to update appointment status.");
-        clearMessages();
-      }
-    } catch (err) {
-      console.error("Update status error:", err);
-      if (err.response?.status === 401) {
-        localStorage.removeItem("token");
-        navigate("/login");
-        setError("Session expired. Please log in again.");
-        clearMessages();
-      } else {
+        if (response.data.success) {
+          setSuccess(`Appointment ${newStatus} successfully!`);
+          fetchAppointments(); // Re-fetch appointments to update the list
+          clearMessages();
+        } else {
+          setError(response.data.message || "Failed to update appointment status.");
+          clearMessages();
+        }
+      } catch (err) {
+        console.error("Update status error:", err);
         setError(err.response?.data?.message || "Failed to update appointment status.");
         clearMessages();
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [navigate, fetchAppointments, clearMessages]); // Dependencies for useCallback
+    },
+    [fetchAppointments, clearMessages, api]
+  ); // Dependencies for useCallback
 
   // Submit new prescription
-  const submitPrescription = useCallback(async () => {
-    if (!prescriptionData.patientId || !prescriptionData.medicines) {
-      setError("Please select a patient and enter medicines.");
-      clearMessages();
-      return;
-    }
-
-    setLoading(true);
-    setError("");
-    setSuccess("");
-    try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        navigate("/login");
-        setLoading(false);
-        setError("Authentication token missing. Please log in again.");
+  const submitPrescription = useCallback(
+    async () => {
+      if (!prescriptionData.patientId || !prescriptionData.medicines) {
+        setError("Please select a patient and enter medicines.");
         clearMessages();
         return;
       }
-      // Ensure the Authorization header is set before making this request
-      api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
-      const response = await api.post("/prescriptions", {
-        ...prescriptionData,
-        doctorId: user?._id, // Ensure doctorId is sent
-        date: new Date().toISOString() // Current date for prescription
-      });
-
-      if (response.data.success) {
-        setSuccess("Prescription saved successfully!");
-        setShowPrescriptionForm(false); // Close the form
-        // Reset prescription form data
-        setPrescriptionData({
-          patientId: "",
-          medicines: "",
-          dosage: "",
-          instructions: "",
-          followUpDate: "",
-          diagnosis: ""
+      setLoading(true);
+      setError("");
+      setSuccess("");
+      try {
+        const response = await api.post("/prescriptions", {
+          ...prescriptionData,
+          doctorId: user?._id, // Ensure doctorId is sent
+          date: new Date().toISOString(), // Current date for prescription
         });
-        clearMessages();
-      } else {
-        setError(response.data.message || "Failed to save prescription.");
-        clearMessages();
-      }
-    } catch (err) {
-      console.error("Save prescription error:", err);
-      if (err.response?.status === 401) {
-        localStorage.removeItem("token");
-        navigate("/login");
-        setError("Session expired. Please log in again.");
-        clearMessages();
-      } else {
+
+        if (response.data.success) {
+          setSuccess("Prescription saved successfully!");
+          // setShowPrescriptionForm(false); // Close the form
+          // Reset prescription form data
+          setPrescriptionData({
+            patientId: "",
+            medicines: "",
+            dosage: "",
+            instructions: "",
+            followUpDate: "",
+            diagnosis: "",
+          });
+          clearMessages();
+        } else {
+          setError(response.data.message || "Failed to save prescription.");
+          clearMessages();
+        }
+      } catch (err) {
+        console.error("Save prescription error:", err);
         setError(err.response?.data?.message || "Failed to save prescription.");
         clearMessages();
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  }, [prescriptionData, user, navigate, clearMessages]); // Dependencies for useCallback
+    },
+    [prescriptionData, user, clearMessages, api]
+  ); // Dependencies for useCallback
 
   // --- Event Handlers ---
 
   // Handles changes in prescription form inputs
   const handlePrescriptionChange = useCallback((e) => {
     const { name, value } = e.target;
-    setPrescriptionData(prev => ({
+    setPrescriptionData((prev) => ({
       ...prev,
-      [name]: value
+      [name]: value,
     }));
   }, []); // No dependencies as it only uses e and prev state
 
   // Initiates PDF generation for the prescription
-  const generatePrescription = useCallback(() => {
+  const handleGeneratePdf = useCallback(() => {
     // Check if a patient is selected before generating PDF
     if (!prescriptionData.patientId) {
       setError("Please select a patient before generating the PDF.");
@@ -250,8 +222,7 @@ const DoctorDashboard = () => {
   // Handles user logout
   const handleLogout = useCallback(() => {
     localStorage.removeItem("token");
-    // Clear the authorization header from the axios instance as well upon logout
-    delete api.defaults.headers.common['Authorization'];
+    // No need to explicitly delete header here, interceptor will handle missing token
     navigate("/login");
   }, [navigate]); // Depend on navigate
 
@@ -259,9 +230,6 @@ const DoctorDashboard = () => {
 
   // Initial fetch on component mount
   useEffect(() => {
-    // This effect runs once to perform initial data fetches.
-    // The token setting for the API instance is handled within the fetch functions themselves
-    // and also explicitly in handleStatusChange and submitPrescription.
     fetchUserData();
     fetchAppointments();
   }, [fetchUserData, fetchAppointments]); // Ensure these memoized functions are stable
@@ -271,21 +239,22 @@ const DoctorDashboard = () => {
     let filtered = [...appointments];
 
     if (statusFilter) {
-      filtered = filtered.filter(a => a.status === statusFilter);
+      filtered = filtered.filter((a) => a.status === statusFilter);
     }
 
     if (searchTerm) {
       const term = searchTerm.toLowerCase();
-      filtered = filtered.filter(a =>
-        a.patient?.name?.toLowerCase().includes(term) ||
-        a.symptoms?.toLowerCase().includes(term)
+      filtered = filtered.filter(
+        (a) =>
+          a.patient?.name?.toLowerCase().includes(term) ||
+          a.symptoms?.toLowerCase().includes(term)
       );
     }
 
     if (selectedDate) {
       const selected = new Date(selectedDate).toDateString();
-      filtered = filtered.filter(a =>
-        new Date(a.date).toDateString() === selected
+      filtered = filtered.filter(
+        (a) => new Date(a.date).toDateString() === selected
       );
     }
 
@@ -297,7 +266,9 @@ const DoctorDashboard = () => {
 
   // Gets the full patient object for the currently selected patient in the prescription form
   const getSelectedPatient = useCallback(() => {
-    return appointments.find(a => a.patient?._id === prescriptionData.patientId)?.patient;
+    return appointments.find(
+      (a) => a.patient?._id === prescriptionData.patientId
+    )?.patient;
   }, [appointments, prescriptionData.patientId]);
 
   // Pagination logic
@@ -362,7 +333,10 @@ const DoctorDashboard = () => {
             setModalData(null); // Ensure appointment detail modal is closed
             // Optional: Pre-fill patientId if a modalData was active
             if (modalData) {
-              setPrescriptionData(prev => ({ ...prev, patientId: modalData.patient?._id }));
+              setPrescriptionData((prev) => ({
+                ...prev,
+                patientId: modalData.patient?._id,
+              }));
             }
           }}
         >
@@ -382,7 +356,7 @@ const DoctorDashboard = () => {
             <p>
               {status === "total"
                 ? appointments.length
-                : appointments.filter(a => a.status === status).length}
+                : appointments.filter((a) => a.status === status).length}
             </p>
           </div>
         ))}
@@ -395,7 +369,7 @@ const DoctorDashboard = () => {
         <div className="no-appointments">No appointments found.</div>
       ) : (
         <div className="appointments-list">
-          {paginatedAppointments.map(appt => (
+          {paginatedAppointments.map((appt) => (
             <div key={appt._id} className="appt-card">
               <div className="appt-card-header">
                 <h4>{appt.patient?.name || "Unknown Patient"}</h4>
@@ -407,16 +381,25 @@ const DoctorDashboard = () => {
               <div className="appt-card-body">
                 <div className="appt-card-row">
                   <span className="appt-card-label">Date:</span>
-                  <span className="appt-card-value">{new Date(appt.date).toLocaleDateString()}</span>
+                  <span className="appt-card-value">
+                    {new Date(appt.date).toLocaleDateString()}
+                  </span>
                 </div>
                 <div className="appt-card-row">
                   <span className="appt-card-label">Time:</span>
                   {/* Ensure consistent time formatting */}
-                  <span className="appt-card-value">{new Date(appt.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                  <span className="appt-card-value">
+                    {new Date(appt.date).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
+                  </span>
                 </div>
                 <div className="appt-card-row">
                   <span className="appt-card-label">Symptoms:</span>
-                  <span className="appt-card-value symptoms">{appt.symptoms || "N/A"}</span>
+                  <span className="appt-card-value symptoms">
+                    {appt.symptoms || "N/A"}
+                  </span>
                 </div>
               </div>
 
@@ -466,7 +449,7 @@ const DoctorDashboard = () => {
       {totalPages > 1 && (
         <div className="pagination">
           <button
-            onClick={() => setPage(p => Math.max(p - 1, 1))}
+            onClick={() => setPage((p) => Math.max(p - 1, 1))}
             disabled={page === 1}
             aria-label="Previous page"
           >
@@ -485,7 +468,7 @@ const DoctorDashboard = () => {
           ))}
 
           <button
-            onClick={() => setPage(p => Math.min(p + 1, totalPages))}
+            onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
             disabled={page === totalPages}
             aria-label="Next page"
           >
@@ -497,21 +480,39 @@ const DoctorDashboard = () => {
       {/* Appointment Details Modal */}
       {modalData && (
         <div className="modal-overlay" onClick={() => setModalData(null)}>
-          <div className="modal-content" onClick={e => e.stopPropagation()}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
             <h3>Appointment Details</h3>
             <div className="modal-body">
-              <p><strong>Patient:</strong> {modalData.patient?.name || "N/A"}</p>
-              <p><strong>Contact:</strong> {modalData.patient?.email || modalData.patient?.phone || "N/A"}</p>
-              <p><strong>Date:</strong> {new Date(modalData.date).toDateString()}</p>
-              <p><strong>Time:</strong> {new Date(modalData.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-              <p><strong>Symptoms:</strong> {modalData.symptoms || "N/A"}</p>
+              <p>
+                <strong>Patient:</strong> {modalData.patient?.name || "N/A"}
+              </p>
+              <p>
+                <strong>Contact:</strong>{" "}
+                {modalData.patient?.email || modalData.patient?.phone || "N/A"}
+              </p>
+              <p>
+                <strong>Date:</strong> {new Date(modalData.date).toDateString()}
+              </p>
+              <p>
+                <strong>Time:</strong>{" "}
+                {new Date(modalData.date).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
+              <p>
+                <strong>Symptoms:</strong> {modalData.symptoms || "N/A"}
+              </p>
               <p>
                 <strong>Status:</strong>{" "}
                 <span className={`status-${modalData.status}`}>
                   {modalData.status}
                 </span>
               </p>
-              {modalData.notes && <p><strong>Notes:</strong> {modalData.notes}</p>}
+              {modalData.notes && <p>
+                  <strong>Notes:</strong> {modalData.notes}
+                </p>
+              }
             </div>
             <button
               className="close-modal"
@@ -526,8 +527,14 @@ const DoctorDashboard = () => {
 
       {/* Prescription Form Modal */}
       {showPrescriptionForm && (
-        <div className="modal-overlay" onClick={() => setShowPrescriptionForm(false)}>
-          <div className="modal-content prescription-modal" onClick={e => e.stopPropagation()}>
+        <div
+          className="modal-overlay"
+          onClick={() => setShowPrescriptionForm(false)}
+        >
+          <div
+            className="modal-content prescription-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3>Generate Prescription</h3>
             {/* The content below this div will be converted to PDF */}
             <div className="prescription-pdf-preview" ref={targetRef}>
@@ -538,27 +545,41 @@ const DoctorDashboard = () => {
                   <p>Adisaptogram, Hooghly</p>
                   <p>Phone: 6294505905</p>
                 </div>
-                <p className="prescription-date">Date: {new Date().toLocaleDateString()}</p>
+                <p className="prescription-date">
+                  Date: {new Date().toLocaleDateString()}
+                </p>
               </div>
 
               <div className="prescription-body">
                 <div className="doctor-patient-info">
                   <div>
-                    <p><strong>Doctor:</strong> Dr. {user?.name || "Doctor"}</p>
-                    <p><strong>Specialization:</strong> {user?.specialization || "General Physician"}</p>
-                    {/* Removed License No as requested */}
+                    <p>
+                      <strong>Doctor:</strong> Dr. {user?.name || "Doctor"}
+                    </p>
+                    <p>
+                      <strong>Specialization:</strong>{" "}
+                      {user?.specialization || "General Physician"}
+                    </p>
                   </div>
                   <div>
-                    <p><strong>Patient:</strong> {getSelectedPatient()?.name || "________________"}</p>
-                    {/* Removed Age/Gender as requested */}
-                    <p><strong>Patient ID:</strong> {getSelectedPatient()?._id?.slice(-6) || "______"}</p>
+                    <p>
+                      <strong>Patient:</strong>{" "}
+                      {getSelectedPatient()?.name || "________________"}
+                    </p>
+                    <p>
+                      <strong>Patient ID:</strong>{" "}
+                      {getSelectedPatient()?._id?.slice(-6) || "______"}
+                    </p>
                   </div>
                 </div>
 
                 <div className="diagnosis-section">
-                  <p><strong>Diagnosis:</strong></p>
+                  <p>
+                    <strong>Diagnosis:</strong>
+                  </p>
                   <div className="diagnosis-box">
-                    {prescriptionData.diagnosis || "_________________________________________________________"}
+                    {prescriptionData.diagnosis ||
+                      "_________________________________________________________"}
                   </div>
                 </div>
 
@@ -568,22 +589,33 @@ const DoctorDashboard = () => {
                       <tr>
                         <th>Medicine</th>
                         <th>Dosage</th>
-                        <th>Instructions</th> {/* Renamed from Duration to Instructions for clarity */}
+                        <th>Instructions</th>
                       </tr>
                     </thead>
                     <tbody>
                       {/* Split medicines and dosage by new line to create rows */}
-                      {prescriptionData.medicines.split('\n').map((medicine, index) => (
-                        medicine.trim() && ( // Only render if medicine line is not empty
-                          <tr key={index}>
-                            <td>{medicine.trim()}</td>
-                            <td>{prescriptionData.dosage.split('\n')[index]?.trim() || "As directed"}</td>
-                            <td>{prescriptionData.instructions.split('\n')[index]?.trim() || "Until finished"}</td>
-                          </tr>
-                        )
-                      ))}
+                      {prescriptionData.medicines
+                        .split("\n")
+                        .map((medicine, index) =>
+                          medicine.trim() ? (
+                            <tr key={index}>
+                              <td>{medicine.trim()}</td>
+                              <td>
+                                {prescriptionData.dosage.split("\n")[index]
+                                  ?.trim() || "As directed"}
+                              </td>
+                              <td>
+                                {prescriptionData.instructions.split("\n")[
+                                  index
+                                ]?.trim() || "Until finished"}
+                              </td>
+                            </tr>
+                          ) : null
+                        )}
                       {/* Add placeholder rows if no medicines are entered */}
-                      {prescriptionData.medicines.split('\n').filter(Boolean).length === 0 && (
+                      {prescriptionData.medicines
+                        .split("\n")
+                        .filter(Boolean).length === 0 && (
                         <tr>
                           <td>___________________</td>
                           <td>___________</td>
@@ -595,12 +627,17 @@ const DoctorDashboard = () => {
                 </div>
 
                 <div className="additional-instructions">
-                  <p><strong>Additional Notes:</strong></p>
+                  <p>
+                    <strong>Additional Notes:</strong>
+                  </p>
                   <p>{prescriptionData.instructions || "None"}</p>
                 </div>
 
                 <div className="follow-up">
-                  <p><strong>Follow-up Date:</strong> {prescriptionData.followUpDate || "Not specified"}</p>
+                  <p>
+                    <strong>Follow-up Date:</strong>{" "}
+                    {prescriptionData.followUpDate || "Not specified"}
+                  </p>
                 </div>
               </div>
 
@@ -624,14 +661,16 @@ const DoctorDashboard = () => {
                   required
                 >
                   <option value="">-- Select Patient --</option>
-                  {appointments.map(appt => (
-                    // Only show appointments that have a patient object
-                    appt.patient?._id && (
-                      <option key={appt.patient._id} value={appt.patient._id}>
-                        {appt.patient.name} ({new Date(appt.date).toLocaleDateString()})
-                      </option>
-                    )
-                  ))}
+                  {appointments.map(
+                    (appt) =>
+                      // Only show appointments that have a patient object
+                      appt.patient?._id && (
+                        <option key={appt.patient._id} value={appt.patient._id}>
+                          {appt.patient.name} (
+                          {new Date(appt.date).toLocaleDateString()})
+                        </option>
+                      )
+                  )}
                 </select>
               </div>
 
@@ -661,7 +700,9 @@ const DoctorDashboard = () => {
               </div>
 
               <div className="form-group">
-                <label htmlFor="dosage">Dosage (match lines with medicines):</label>
+                <label htmlFor="dosage">
+                  Dosage (match lines with medicines):
+                </label>
                 <textarea
                   id="dosage"
                   name="dosage"
@@ -698,9 +739,15 @@ const DoctorDashboard = () => {
             </div>
 
             <div className="modal-actions">
-              {/* Removed the "Save Prescription" button */}
               <button
-                onClick={generatePrescription}
+                onClick={submitPrescription}
+                className="save-prescription-btn"
+                disabled={loading}
+              >
+                Save Prescription
+              </button>
+              <button
+                onClick={handleGeneratePdf}
                 className="generate-btn"
                 disabled={!prescriptionData.patientId} // Disable if no patient is selected
               >

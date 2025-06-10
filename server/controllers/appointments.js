@@ -1,42 +1,64 @@
+// server/controllers/appointments.js
 const Appointment = require('../models/Appointment');
-const User = require('../models/User');
+const User = require('../models/User'); // Assuming User model is for doctors and patients
 
 // @desc    Create appointment
 // @route   POST /api/appointments
-// @access  Private
+// @access  Private (Patient)
 exports.createAppointment = async (req, res) => {
   try {
-    // Verify doctor exists
-    const doctor = await User.findById(req.body.doctorId);
-    if (!doctor || doctor.role !== 'doctor') {
-      return res.status(400).json({ 
+    const { doctorId, date, time, symptoms } = req.body;
+
+    // Basic input validation
+    if (!doctorId || !date || !time || !symptoms) {
+      return res.status(400).json({
         success: false,
-        error: 'Invalid doctor ID' 
+        message: 'Please provide doctor ID, date, time, and symptoms for the appointment.'
       });
     }
 
-    // Check if appointment slot is available
+    // Verify doctor exists and has the 'doctor' role
+    const doctor = await User.findById(doctorId);
+    if (!doctor || doctor.role !== 'doctor') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid doctor ID or doctor not found.'
+      });
+    }
+
+    // Parse the date string into a Date object for comparison
+    const appointmentDate = new Date(date);
+    // Ensure the time format matches for precise comparison
+    const appointmentTime = time; // Assuming time is in HH:MM format (e.g., "09:00")
+
+    // Check if appointment slot is already booked for this doctor on this date and time
     const existingAppointment = await Appointment.findOne({
-      doctor: req.body.doctorId,
-      date: req.body.date,
-      time: req.body.time,
-      status: { $in: ['pending', 'confirmed'] }
+      doctor: doctorId,
+      // For date comparison, it's often safer to compare specific date components
+      // or ensure 'date' field in DB is also stored without time or at start of day.
+      // If 'date' in DB is an ISOString representing a full datetime,
+      // you might need to query by date range (e.g., $gte and $lt for the day).
+      // For simplicity, assuming direct date object comparison works for date-only matches:
+      date: appointmentDate,
+      time: appointmentTime,
+      status: { $in: ['pending', 'confirmed'] } // Only consider pending or confirmed as booked
     });
 
     if (existingAppointment) {
       return res.status(400).json({
         success: false,
-        error: 'This time slot is already booked'
+        message: 'This time slot is already booked for the selected doctor.'
       });
     }
 
+    // Create the new appointment
     const appointment = await Appointment.create({
-      doctor: req.body.doctorId,
-      patient: req.user.id,
-      date: req.body.date,
-      time: req.body.time,
-      symptoms: req.body.symptoms,
-      status: 'pending'
+      doctor: doctorId,
+      patient: req.user.id, // req.user.id should be set by your authentication middleware
+      date: appointmentDate,
+      time: appointmentTime,
+      symptoms,
+      status: 'pending' // New appointments are always pending initially
     });
 
     res.status(201).json({
@@ -44,33 +66,33 @@ exports.createAppointment = async (req, res) => {
       data: appointment
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ 
+    console.error('Error in createAppointment:', err.message);
+    res.status(500).json({
       success: false,
-      error: 'Server Error' 
+      message: 'Server Error: Could not create appointment. Please try again later.'
     });
   }
 };
 
 // @desc    Get patient appointments
 // @route   GET /api/appointments/patient
-// @access  Private
+// @access  Private (Patient)
 exports.getPatientAppointments = async (req, res) => {
   try {
     const appointments = await Appointment.find({ patient: req.user.id })
-      .populate('doctor', 'name email specialization')
-      .sort('-date -time');
+      .populate('doctor', 'name email specialization') // Populate doctor details
+      .sort('-date -time'); // Sort by date (desc) then time (desc)
 
-    res.json({
+    res.status(200).json({
       success: true,
       count: appointments.length,
       data: appointments
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ 
+    console.error('Error in getPatientAppointments:', err.message);
+    res.status(500).json({
       success: false,
-      error: 'Server Error' 
+      message: 'Server Error: Could not retrieve patient appointments.'
     });
   }
 };
@@ -81,19 +103,19 @@ exports.getPatientAppointments = async (req, res) => {
 exports.getDoctorAppointments = async (req, res) => {
   try {
     const appointments = await Appointment.find({ doctor: req.user.id })
-      .populate('patient', 'name email')
-      .sort('-date -time');
+      .populate('patient', 'name email') // Populate patient details
+      .sort('-date -time'); // Sort by date (desc) then time (desc)
 
-    res.json({
+    res.status(200).json({
       success: true,
       count: appointments.length,
       data: appointments
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ 
+    console.error('Error in getDoctorAppointments:', err.message);
+    res.status(500).json({
       success: false,
-      error: 'Server Error' 
+      message: 'Server Error: Could not retrieve doctor appointments.'
     });
   }
 };
@@ -110,28 +132,32 @@ exports.getAppointment = async (req, res) => {
     if (!appointment) {
       return res.status(404).json({
         success: false,
-        error: 'Appointment not found'
+        message: 'Appointment not found.'
       });
     }
 
-    // Verify the requesting user is either the patient or doctor
-    if (appointment.patient._id.toString() !== req.user.id && 
+    // Verify the requesting user is either the patient or the doctor for this appointment
+    if (appointment.patient._id.toString() !== req.user.id &&
         appointment.doctor._id.toString() !== req.user.id) {
       return res.status(401).json({
         success: false,
-        error: 'Not authorized to access this appointment'
+        message: 'Not authorized to access this appointment.'
       });
     }
 
-    res.json({
+    res.status(200).json({
       success: true,
       data: appointment
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ 
+    console.error('Error in getAppointment:', err.message);
+    // Check for invalid MongoDB ObjectId format
+    if (err.kind === 'ObjectId') {
+        return res.status(400).json({ success: false, message: 'Invalid appointment ID format.' });
+    }
+    res.status(500).json({
       success: false,
-      error: 'Server Error' 
+      message: 'Server Error: Could not retrieve appointment.'
     });
   }
 };
@@ -141,51 +167,66 @@ exports.getAppointment = async (req, res) => {
 // @access  Private (Doctor only)
 exports.updateAppointmentStatus = async (req, res) => {
   try {
+    const { status } = req.body; // Extract status from request body
+
+    // Validate status input
+    if (!status) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a status to update.'
+      });
+    }
+
     const appointment = await Appointment.findById(req.params.id);
 
     if (!appointment) {
       return res.status(404).json({
         success: false,
-        error: 'Appointment not found'
+        message: 'Appointment not found.'
       });
     }
 
-    // Verify the requesting user is the doctor
+    // Verify the requesting user is the doctor associated with this appointment
     if (appointment.doctor.toString() !== req.user.id) {
       return res.status(401).json({
         success: false,
-        error: 'Not authorized to update this appointment'
+        message: 'Not authorized to update this appointment.'
       });
     }
 
-    // Validate status
+    // Validate if the new status is a permissible value
     const validStatuses = ['pending', 'confirmed', 'cancelled', 'completed'];
-    if (!validStatuses.includes(req.body.status)) {
+    if (!validStatuses.includes(status)) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid status value'
+        message: `Invalid status value. Allowed values are: ${validStatuses.join(', ')}.`
       });
     }
 
-    appointment.status = req.body.status;
+    // Update the appointment status
+    appointment.status = status;
     await appointment.save();
 
-    res.json({
+    res.status(200).json({
       success: true,
+      message: `Appointment status updated to ${status} successfully!`,
       data: appointment
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ 
+    console.error('Error in updateAppointmentStatus:', err.message);
+    if (err.kind === 'ObjectId') {
+        return res.status(400).json({ success: false, message: 'Invalid appointment ID format.' });
+    }
+    res.status(500).json({
       success: false,
-      error: 'Server Error' 
+      message: 'Server Error: Could not update appointment status.'
     });
   }
 };
 
 // @desc    Cancel appointment
 // @route   DELETE /api/appointments/:id
-// @access  Private
+// @access  Private (Patient or Doctor)
 exports.cancelAppointment = async (req, res) => {
   try {
     const appointment = await Appointment.findById(req.params.id);
@@ -193,39 +234,44 @@ exports.cancelAppointment = async (req, res) => {
     if (!appointment) {
       return res.status(404).json({
         success: false,
-        error: 'Appointment not found'
+        message: 'Appointment not found.'
       });
     }
 
-    // Verify the requesting user is either the patient or doctor
-    if (appointment.patient.toString() !== req.user.id && 
+    // Verify the requesting user is either the patient or the doctor
+    if (appointment.patient.toString() !== req.user.id &&
         appointment.doctor.toString() !== req.user.id) {
       return res.status(401).json({
         success: false,
-        error: 'Not authorized to cancel this appointment'
+        message: 'Not authorized to cancel this appointment.'
       });
     }
 
-    // Only allow cancellation if status is pending or confirmed
-    if (!['pending', 'confirmed'].includes(appointment.status)) {
+    // Prevent cancellation if already completed or cancelled
+    if (appointment.status === 'cancelled' || appointment.status === 'completed') {
       return res.status(400).json({
         success: false,
-        error: 'Cannot cancel an appointment that is already cancelled or completed'
+        message: 'Cannot cancel an appointment that is already cancelled or completed.'
       });
     }
 
+    // Set status to cancelled
     appointment.status = 'cancelled';
     await appointment.save();
 
-    res.json({
+    res.status(200).json({
       success: true,
-      data: {}
+      message: 'Appointment cancelled successfully!',
+      data: {} // No data needed on successful cancellation
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ 
+    console.error('Error in cancelAppointment:', err.message);
+    if (err.kind === 'ObjectId') {
+        return res.status(400).json({ success: false, message: 'Invalid appointment ID format.' });
+    }
+    res.status(500).json({
       success: false,
-      error: 'Server Error' 
+      message: 'Server Error: Could not cancel appointment.'
     });
   }
 };
@@ -235,40 +281,49 @@ exports.cancelAppointment = async (req, res) => {
 // @access  Private
 exports.getAvailableSlots = async (req, res) => {
   try {
-    const { date } = req.query;
+    const { date } = req.query; // Date passed as query parameter
     const doctorId = req.params.doctorId;
 
-    if (!date) {
+    // Validate required parameters
+    if (!date || !doctorId) {
       return res.status(400).json({
         success: false,
-        error: 'Date parameter is required'
+        message: 'Both date and doctorId parameters are required.'
       });
     }
 
-    // Verify doctor exists
+    // Verify doctor exists and has the 'doctor' role
     const doctor = await User.findById(doctorId);
     if (!doctor || doctor.role !== 'doctor') {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        error: 'Invalid doctor ID' 
+        message: 'Invalid doctor ID or doctor not found.'
       });
     }
 
-    // Get all appointments for this doctor on this date
+    // Convert the query date string to a Date object (start of the day)
+    const queryDate = new Date(date);
+    queryDate.setHours(0, 0, 0, 0); // Normalize to start of the day for range query
+
+    // Get all appointments for this doctor on this specific day
+    // Query by date range to handle potential timezone issues or exact matches
     const appointments = await Appointment.find({
       doctor: doctorId,
-      date: new Date(date),
-      status: { $in: ['pending', 'confirmed'] }
+      date: {
+        $gte: queryDate, // Greater than or equal to the start of the day
+        $lt: new Date(queryDate.getTime() + 24 * 60 * 60 * 1000) // Less than the start of the next day
+      },
+      status: { $in: ['pending', 'confirmed'] } // Only consider pending or confirmed as booked
     });
 
-    // Get booked time slots
+    // Extract booked time slots
     const bookedSlots = appointments.map(appt => appt.time);
 
     // Generate all possible time slots (example: 9am to 5pm in 30-minute intervals)
     const allSlots = [];
-    const startHour = 9; // 9am
-    const endHour = 17; // 5pm
-    
+    const startHour = 9; // 9 AM
+    const endHour = 17; // 5 PM (meaning up to 4:30 PM slot)
+
     for (let hour = startHour; hour < endHour; hour++) {
       for (let minute = 0; minute < 60; minute += 30) {
         const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
@@ -276,88 +331,98 @@ exports.getAvailableSlots = async (req, res) => {
       }
     }
 
-    // Filter out booked slots
+    // Filter out booked slots to get available ones
     const availableSlots = allSlots.filter(slot => !bookedSlots.includes(slot));
 
-    res.json({
+    res.status(200).json({
       success: true,
       data: availableSlots
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ 
+    console.error('Error in getAvailableSlots:', err.message);
+    if (err.kind === 'ObjectId') {
+        return res.status(400).json({ success: false, message: 'Invalid doctor ID format.' });
+    }
+    res.status(500).json({
       success: false,
-      error: 'Server Error' 
+      message: 'Server Error: Could not retrieve available slots.'
     });
   }
 };
 
 // @desc    Update appointment details
 // @route   PUT /api/appointments/:id
-// @access  Private
+// @access  Private (Patient only)
 exports.updateAppointment = async (req, res) => {
   try {
+    const { date, time, symptoms } = req.body;
+
     const appointment = await Appointment.findById(req.params.id);
 
     if (!appointment) {
       return res.status(404).json({
         success: false,
-        error: 'Appointment not found'
+        message: 'Appointment not found.'
       });
     }
 
-    // Verify the requesting user is the patient
+    // Verify the requesting user is the patient for this appointment
     if (appointment.patient.toString() !== req.user.id) {
       return res.status(401).json({
         success: false,
-        error: 'Not authorized to update this appointment'
+        message: 'Not authorized to update this appointment.'
       });
     }
 
-    // Only allow updates if status is pending
+    // Only allow updates if the appointment status is 'pending'
     if (appointment.status !== 'pending') {
       return res.status(400).json({
         success: false,
-        error: 'Cannot update an appointment that is not pending'
+        message: 'Cannot update an appointment that is not pending.'
       });
     }
 
-    // Check if new time slot is available
-    if (req.body.time && req.body.time !== appointment.time) {
-      const existingAppointment = await Appointment.findOne({
-        doctor: appointment.doctor,
-        date: req.body.date || appointment.date,
-        time: req.body.time,
-        status: { $in: ['pending', 'confirmed'] }
-      });
+    // If date or time is being updated, check for new slot availability
+    const newDate = date ? new Date(date) : appointment.date;
+    const newTime = time || appointment.time;
 
-      if (existingAppointment) {
-        return res.status(400).json({
-          success: false,
-          error: 'This time slot is already booked'
+    if (time && (newTime !== appointment.time || (date && newDate.toDateString() !== new Date(appointment.date).toDateString()))) {
+        const existingAppointment = await Appointment.findOne({
+            doctor: appointment.doctor,
+            date: newDate,
+            time: newTime,
+            status: { $in: ['pending', 'confirmed'] },
+            _id: { $ne: appointment._id } // Exclude current appointment from the check
         });
-      }
+
+        if (existingAppointment) {
+            return res.status(400).json({
+                success: false,
+                message: 'The requested time slot is already booked for this doctor.'
+            });
+        }
     }
 
     // Update allowed fields
-    const allowedUpdates = ['date', 'time', 'symptoms'];
-    allowedUpdates.forEach(field => {
-      if (req.body[field] !== undefined) {
-        appointment[field] = req.body[field];
-      }
-    });
+    if (date !== undefined) appointment.date = new Date(date);
+    if (time !== undefined) appointment.time = time;
+    if (symptoms !== undefined) appointment.symptoms = symptoms;
 
     await appointment.save();
 
-    res.json({
+    res.status(200).json({
       success: true,
+      message: 'Appointment updated successfully!',
       data: appointment
     });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ 
+    console.error('Error in updateAppointment:', err.message);
+    if (err.kind === 'ObjectId') {
+        return res.status(400).json({ success: false, message: 'Invalid appointment ID format.' });
+    }
+    res.status(500).json({
       success: false,
-      error: 'Server Error' 
+      message: 'Server Error: Could not update appointment details.'
     });
   }
 };
