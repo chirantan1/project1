@@ -18,9 +18,10 @@ const AppointmentSchema = new mongoose.Schema({
   time: {
     type: String,
     required: [true, 'Please add a time'],
+    // FIX: Updated regex to match express-validator's stricter HH:MM format
     match: [
-      /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/,
-      'Please enter a valid time in HH:MM format'
+      /^([01]\d|2[0-3]):([0-5]\d)$/, // Requires two digits for hour (00-23) and two for minute (00-59)
+      'Please enter a valid time in HH:MM format (e.g., 09:00)'
     ]
   },
   symptoms: {
