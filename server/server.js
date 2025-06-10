@@ -34,11 +34,12 @@ const allowedOrigins = [
     'https://admin-1-5zv8.onrender.com' // External Admin Portal frontend
 ];
 
+// More robust CORS setup, ensuring the origin is explicitly allowed or for non-browser requests
 app.use(cors({
-    origin: function (origin, callback) {
-        // Allow requests with no origin (e.g., from Postman, curl, or mobile apps)
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.includes(origin)) {
+    origin: (origin, callback) => {
+        // Allow requests with no origin (e.g., from Postman, curl, mobile apps)
+        // or if the origin is in our allowed list.
+        if (!origin || allowedOrigins.includes(origin)) {
             callback(null, true);
         } else {
             console.warn(`❌ CORS: Request from disallowed origin: ${origin}`);
@@ -47,6 +48,7 @@ app.use(cors({
     },
     credentials: true // Allow cookies/authorization headers to be sent cross-origin
 }));
+
 
 // --- Middleware ---
 app.use(express.json()); // Parses incoming JSON requests into req.body
