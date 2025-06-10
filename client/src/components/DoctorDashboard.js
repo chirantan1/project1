@@ -314,6 +314,17 @@ const DoctorDashboard = () => {
       formData.append('clinicAddress', 'Adisaptogram, Hooghly');
       formData.append('clinicPhone', '6294505905');
 
+      // --- NEW DEBUGGING LOG ---
+      // Log FormData contents before sending
+      console.log('--- Frontend: FormData Contents before sending ---');
+      for (let [key, value] of formData.entries()) {
+          if (value instanceof File || value instanceof Blob) {
+              console.log(`  File Field: ${key}, Filename: ${value.name}, Type: ${value.type}, Size: ${value.size} bytes`);
+          } else {
+              console.log(`  Field: ${key}, Value: ${value}`);
+          }
+      }
+      console.log('--------------------------------------------------');
 
       // 6. Send to backend
       const response = await api.post("/prescriptions/send-email", formData, {
@@ -937,4 +948,3 @@ const DoctorDashboard = () => {
 };
 
 export default DoctorDashboard;
-
