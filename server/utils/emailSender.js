@@ -6,7 +6,7 @@ const sendEmail = async (options) => {
     // --- NEW DEBUGGING LOG ---
     console.log('\n--- Inside sendEmail Utility ---');
     console.log('Email options received:', {
-        recipientEmail: options.email, // Changed to options.email
+        recipientEmail: options.to, // FIX: Changed to options.to for consistency
         subject: options.subject,
         hasHtml: !!options.html,
         hasText: !!options.text,
@@ -16,9 +16,9 @@ const sendEmail = async (options) => {
     console.log('------------------------------\n');
 
     // Validate required options for email sending
-    // Changed options.to to options.email for consistency
-    if (!options.email || !options.subject || (!options.html && !options.text)) {
-        console.error('Error: Missing required email options (email, subject, html/text).');
+    // FIX: Changed options.email to options.to for consistency with authController
+    if (!options.to || !options.subject || (!options.html && !options.text)) {
+        console.error('Error: Missing required email options (to, subject, html/text).');
         throw new Error('Missing required email options for sending.');
     }
 
@@ -43,7 +43,7 @@ const sendEmail = async (options) => {
 
     const mailOptions = {
         from: process.env.EMAIL_FROM || process.env.EMAIL_USERNAME, // Sender address, falls back to username if EMAIL_FROM isn't set
-        to: options.email,           // Recipient(s) email address (now consistently options.email)
+        to: options.to,         // FIX: Recipient(s) email address (now consistently options.to)
         subject: options.subject,    // Subject line of the email
         html: options.html,          // HTML body of the email
         text: options.text,          // Plain text body (good practice for email clients that don't render HTML)
