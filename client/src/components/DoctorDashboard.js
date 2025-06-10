@@ -12,7 +12,7 @@ const DoctorDashboard = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [modalData, setModalData] = useState(null); // For appointment details modal
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(false); // Managed centrally now
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [page, setPage] = useState(1);
@@ -79,44 +79,58 @@ const DoctorDashboard = () => {
     return () => clearTimeout(timer); // Cleanup on component unmount or re-render
   }, []);
 
-  // --- API Calls ---
+  // --- API Calls (now more independent of `loading` state) ---
 
   // Fetch user data (doctor's own profile)
   const fetchUserData = useCallback(async () => {
+    console.log("Attempting to fetch user data...");
     try {
-      setLoading(true); // Indicate loading for user data
       const response = await api.get("/auth/me");
       setUser(response.data);
+      console.log("User data fetched successfully:", response.data);
+      return response.data; // Return data for central loading management
     } catch (err) {
       console.error("Error fetching user data:", err);
-      setError("Failed to load doctor's profile.");
+      if (err.response?.status === 401) {
+        localStorage.removeItem("token");
+        navigate("/login");
+        setError("Session expired. Please log in again.");
+      } else {
+        setError("Failed to load doctor's profile.");
+      }
       clearMessages();
-    } finally {
-      setLoading(false);
+      throw err; // Re-throw to be caught by the outer async handler
     }
-  }, [clearMessages, api]); // Depend on clearMessages and api instance
+  }, [clearMessages, api, navigate]); // Depend on navigate now
 
   // Fetch appointments for the logged-in doctor
   const fetchAppointments = useCallback(async () => {
-    setLoading(true);
-    setError("");
+    console.log("Attempting to fetch appointments...");
     try {
       const response = await api.get("/appointments/doctor");
-
       if (response.data?.success) {
         setAppointments(response.data.data || []);
+        console.log("Appointments fetched successfully:", response.data.data);
+        return response.data.data; // Return data for central loading management
       } else {
         setError(response.data?.message || "Failed to load appointments.");
+        console.warn("Backend reported success: false or unexpected data for appointments:", response.data);
         clearMessages();
+        throw new Error(response.data?.message || "Failed to load appointments.");
       }
     } catch (err) {
-      console.error("Fetch appointments error:", err);
-      setError(err.response?.data?.message || "Failed to load appointments.");
+      console.error("Fetch appointments error:", err.response?.data || err.message || err);
+      if (err.response?.status === 401) {
+        localStorage.removeItem("token");
+        navigate("/login");
+        setError("Session expired. Please log in again.");
+      } else {
+        setError(err.response?.data?.message || "Failed to load appointments. Network error or server issue.");
+      }
       clearMessages();
-    } finally {
-      setLoading(false);
+      throw err; // Re-throw to be caught by the outer async handler
     }
-  }, [clearMessages, api]); // Depend on clearMessages and api instance
+  }, [clearMessages, api, navigate]); // Depend on navigate now
 
   // Update appointment status (e.g., pending -> confirmed, confirmed -> completed)
   const handleStatusChange = useCallback(
@@ -138,7 +152,7 @@ const DoctorDashboard = () => {
           clearMessages();
         }
       } catch (err) {
-        console.error("Update status error:", err);
+        console.error("Update status error:", err.response?.data || err.message || err);
         setError(err.response?.data?.message || "Failed to update appointment status.");
         clearMessages();
       } finally {
@@ -169,7 +183,7 @@ const DoctorDashboard = () => {
 
         if (response.data.success) {
           setSuccess("Prescription saved successfully!");
-          // setShowPrescriptionForm(false); // Close the form
+          setShowPrescriptionForm(false); // Close the form
           // Reset prescription form data
           setPrescriptionData({
             patientId: "",
@@ -185,7 +199,7 @@ const DoctorDashboard = () => {
           clearMessages();
         }
       } catch (err) {
-        console.error("Save prescription error:", err);
+        console.error("Save prescription error:", err.response?.data || err.message || err);
         setError(err.response?.data?.message || "Failed to save prescription.");
         clearMessages();
       } finally {
@@ -228,18 +242,46 @@ const DoctorDashboard = () => {
 
   // --- Effects ---
 
-  // Initial fetch on component mount
+  // Centralized data fetching on component mount
   useEffect(() => {
-    fetchUserData();
-    fetchAppointments();
-  }, [fetchUserData, fetchAppointments]); // Ensure these memoized functions are stable
+    console.count("DoctorDashboard useEffect: Initial Fetch Triggered");
+    const loadInitialData = async () => {
+      setLoading(true); // Start loading centrally
+      setError(""); // Clear previous errors
+
+      try {
+        // Run both fetches in parallel
+        await Promise.all([
+          fetchUserData(),
+          fetchAppointments()
+        ]);
+        console.log("All initial data fetches completed successfully.");
+      } catch (err) {
+        console.error("Error during initial data loading:", err);
+        // Errors are already handled by individual fetch functions,
+        // but this catch ensures `finally` runs even if one fails.
+      } finally {
+        setLoading(false); // End loading centrally
+        console.log("Finished all initial data loading.");
+      }
+    };
+
+    loadInitialData();
+  }, [fetchUserData, fetchAppointments]); // Dependencies ensure this runs only when these functions change (which is only on mount due to useCallback)
 
   // Filters appointments whenever `appointments`, `statusFilter`, `searchTerm`, or `selectedDate` changes
   useEffect(() => {
+    console.log("Filtering appointments...");
+    console.log("Initial appointments received for filtering:", appointments.length);
+    console.log("Status Filter:", statusFilter);
+    console.log("Search Term:", searchTerm);
+    console.log("Selected Date (input value):", selectedDate);
+
     let filtered = [...appointments];
 
     if (statusFilter) {
       filtered = filtered.filter((a) => a.status === statusFilter);
+      console.log("After status filter (count):", filtered.length);
     }
 
     if (searchTerm) {
@@ -249,17 +291,28 @@ const DoctorDashboard = () => {
           a.patient?.name?.toLowerCase().includes(term) ||
           a.symptoms?.toLowerCase().includes(term)
       );
+      console.log("After search term filter (count):", filtered.length);
     }
 
     if (selectedDate) {
-      const selected = new Date(selectedDate).toDateString();
-      filtered = filtered.filter(
-        (a) => new Date(a.date).toDateString() === selected
-      );
+      const selectedDateString = selectedDate; 
+
+      filtered = filtered.filter(a => {
+        const apptDate = new Date(a.date);
+        const year = apptDate.getFullYear();
+        const month = String(apptDate.getMonth() + 1).padStart(2, '0');
+        const day = String(apptDate.getDate()).padStart(2, '0');
+        const apptDateFormatted = `${year}-${month}-${day}`;
+        
+        console.log(`Comparing appt date: ${apptDateFormatted} with selected date: ${selectedDateString}`);
+        return apptDateFormatted === selectedDateString;
+      });
+      console.log("After date filter (count):", filtered.length);
     }
 
     setFilteredAppointments(filtered);
     setPage(1); // Reset to first page on filter change
+    console.log("Final filtered appointments count:", filtered.length);
   }, [appointments, statusFilter, searchTerm, selectedDate]);
 
   // --- Helper Functions for Rendering ---
@@ -363,6 +416,7 @@ const DoctorDashboard = () => {
       </div>
 
       {/* Appointments List */}
+      {console.log("Rendering paginated appointments. Length:", paginatedAppointments.length, "Data:", paginatedAppointments)}
       {loading ? (
         <div className="loading-spinner">Loading appointments...</div>
       ) : paginatedAppointments.length === 0 ? (
@@ -665,7 +719,8 @@ const DoctorDashboard = () => {
                     (appt) =>
                       // Only show appointments that have a patient object
                       appt.patient?._id && (
-                        <option key={appt.patient._id} value={appt.patient._id}>
+                        // FIX: Use appt._id as the key for uniqueness across all appointments
+                        <option key={appt._id} value={appt.patient._id}>
                           {appt.patient.name} (
                           {new Date(appt.date).toLocaleDateString()})
                         </option>
