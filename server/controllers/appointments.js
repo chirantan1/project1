@@ -15,6 +15,12 @@ const isValidTimeFormat = (time) => {
 // @route   POST /api/appointments
 // @access  Private (Patient)
 exports.createAppointment = async (req, res) => {
+    // --- ADDED FOR DEBUGGING 500 ERROR: Check req.user at the very beginning ---
+    console.log('--- DEBUGGING REQ.USER ---');
+    console.log('req.user:', req.user);
+    console.log('req.user.id:', req.user ? req.user.id : 'N/A');
+    console.log('--- END DEBUGGING REQ.USER ---');
+
     // Enhanced validation error handling from express-validator
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -77,7 +83,7 @@ exports.createAppointment = async (req, res) => {
             console.warn('Moment.js date validation failed for:', date);
             return res.status(400).json({
                 success: false,
-                message: 'Invalid date format. Please use YYYY-MM-DD (e.g., 2025-06-10).'
+                message: 'Invalid date format. Please use ज्यामुळे-MM-DD (e.g., 2025-06-10).'
             });
         }
 
@@ -390,7 +396,7 @@ exports.getAvailableSlots = async (req, res) => {
         if (!queryDate.isValid()) {
              return res.status(400).json({
                 success: false,
-                message: 'Invalid date format for availability. Please use YYYY-MM-DD.'
+                message: 'Invalid date format for availability. Please use ज्यामुळे-MM-DD.'
              });
         }
 
@@ -491,7 +497,7 @@ exports.updateAppointment = async (req, res) => {
             if (!parsedDate.isValid()) {
                 return res.status(400).json({
                     success: false,
-                    message: 'Invalid date format for update. Please use YYYY-MM-DD.'
+                    message: 'Invalid date format for update. Please use ज्यामुळे-MM-DD.'
                 });
             }
             newDate = parsedDate.toDate();
