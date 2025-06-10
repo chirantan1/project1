@@ -2,11 +2,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User'); // Ensure path is correct
 const { validationResult } = require('express-validator'); // For handling validation middleware errors
-// const nodemailer = require("nodemailer"); // REMOVED: No longer needed here, moved to emailSender utility
-const generateOtp = require("../utils/otpGenerator"); // <--- THIS IMPORT IS CORRECT for your otpGenerator.js
-const sendEmail = require('../utils/emailSender'); // ADDED: Import sendEmail utility
-require('dotenv').config(); // Ensure dotenv is configured to access environment variables
-
+const generateOtp = require("../utils/otpGenerator"); // Correct for your otpGenerator.js
+const sendEmail = require('../utils/emailSender'); // Import sendEmail utility
+// Removed: require('dotenv').config(); // This should ideally be called once in server.js
 
 // @route   POST /api/auth/signup
 // @desc    Register a new user (patient or doctor)
@@ -57,6 +55,7 @@ const signupUser = async (req, res) => {
             user.experience = experience;
             user.phone = phone;
             user.bio = bio;
+            user.isApproved = false; // Doctors often need approval after signup
 
             // Check for unique registrationId for doctors
             if (!registrationId) {
@@ -75,10 +74,57 @@ const signupUser = async (req, res) => {
             user.phone = undefined;
             user.bio = undefined;
             user.registrationId = undefined;
+            user.isApproved = undefined; // Patients don't need approval
         }
 
         // Save the user to the database
         await user.save();
+
+        // --- Send Welcome Email ---
+        try {
+            const welcomeSubject = 'Welcome to Our Healthcare Platform!';
+            let welcomeHtml = '';
+
+            if (role === 'doctor') {
+                welcomeHtml = `
+                    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                        <h2 style="color: #0056b3;">Welcome, Dr. ${name}!</h2>
+                        <p>Thank you for registering as a doctor with our healthcare platform. We're excited to have you join our network.</p>
+                        <p>Your account is currently <strong>pending approval</strong> by our administrators. We will review your details, especially your Registration ID (${registrationId}), and notify you once your profile is active.</p>
+                        <p>In the meantime, please ensure all your profile details are accurate.</p>
+                        <p>If you have any questions, feel free to contact our support team.</p>
+                        <p>Best regards,</p>
+                        <p>The Healthcare Platform Team</p>
+                    </div>
+                `;
+            } else { // Patient role
+                welcomeHtml = `
+                    <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
+                        <h2 style="color: #0056b3;">Welcome, ${name}!</h2>
+                        <p>Thank you for registering with our healthcare platform. We're excited to have you on board as a patient.</p>
+                        <p>You can now log in to your account and start booking appointments, managing your health records, and connecting with healthcare professionals.</p>
+                        <p>Click here to log in: <a href="${process.env.FRONTEND_URL}/login" style="color: #0056b3; text-decoration: none;">Login to your account</a></p>
+                        <p>If you have any questions, feel free to contact our support team.</p>
+                        <p>Best regards,</p>
+                        <p>The Healthcare Platform Team</p>
+                    </div>
+                `;
+            }
+
+            await sendEmail({
+                email: user.email, // Pass the recipient email using the 'email' key
+                subject: welcomeSubject,
+                html: welcomeHtml,
+                text: `Welcome to our platform, ${name}! Your account has been successfully created as a ${role}.`,
+            });
+            console.log('Welcome email sent successfully to:', user.email);
+        } catch (emailError) {
+            console.error('Error sending welcome email:', emailError);
+            // Decide how to handle email sending failures:
+            // - Log the error but continue with registration success (common)
+            // - Potentially inform the user that the email couldn't be sent (less common for welcome emails)
+        }
+        // --- End Send Welcome Email ---
 
         // Generate JWT token
         const payload = { id: user._id, role: user.role };
@@ -99,7 +145,8 @@ const signupUser = async (req, res) => {
                     experience: user.experience,
                     phone: user.phone,
                     bio: user.bio,
-                    registrationId: user.registrationId
+                    registrationId: user.registrationId,
+                    isApproved: user.isApproved // Include approval status for doctors
                 })
             },
         });
@@ -127,6 +174,7 @@ const loginUser = async (req, res) => {
 
     try {
         // Find user and include password field explicitly
+        // If you have `select: false` on password in your User model, you need .select('+password')
         const user = await User.findOne({ email }).select('+password');
         if (!user) {
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
@@ -158,6 +206,7 @@ const loginUser = async (req, res) => {
                     phone: user.phone,
                     bio: user.bio,
                     registrationId: user.registrationId,
+                    isApproved: user.isApproved, // Include approval status for doctors
                 }),
             },
         });

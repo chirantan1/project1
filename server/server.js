@@ -3,26 +3,16 @@ require('dotenv').config(); // Load environment variables from .env file immedia
 
 const express = require('express');
 const cors = require('cors');
-const mongoose = require('mongoose');
+const mongoose = require('mongoose'); // Mongoose is directly used here
 const path = require('path'); // Added for serving static files later if needed
+
+// --- Import Database Connection ---
+const connectDB = require('./config/db'); // IMPORTED: Assuming db.js exports the connectDB function
 
 const app = express();
 
-// --- MongoDB Connection ---
-const connectDB = async () => {
-    try {
-        // Mongoose v6.0+ discourages useNewUrlParser and useUnifiedTopology as they are default
-        await mongoose.connect(process.env.MONGO_URI);
-        console.log('✅ MongoDB Connected Successfully!');
-    } catch (err) {
-        console.error('❌ MongoDB Connection Error:', err.message);
-        // Exit process with failure if DB connection fails
-        process.exit(1);
-    }
-};
-
 // Connect to MongoDB
-connectDB();
+connectDB(); // Call the imported function to establish database connection
 
 // --- CORS Configuration ---
 // Define allowed origins for your frontend applications
