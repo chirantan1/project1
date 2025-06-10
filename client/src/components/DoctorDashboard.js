@@ -37,9 +37,12 @@ const DoctorDashboard = () => {
   // --- Axios Instance Configuration ---
   const api = axios.create({
     baseURL: "https://project1-backend-d55g.onrender.com/api",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    // FIX: Remove Content-Type from default headers.
+    // Axios automatically sets 'multipart/form-data' when FormData is used.
+    // Setting it here explicitly to 'application/json' was overriding that.
+    // headers: {
+    //   "Content-Type": "application/json",
+    // },
   });
 
   // Request Interceptor to attach token
@@ -331,6 +334,7 @@ const DoctorDashboard = () => {
           headers: {
               // Axios automatically sets Content-Type to 'multipart/form-data' for FormData
               // No need to set it manually unless there's a specific issue
+              // The explicit 'Content-Type': 'application/json' in api.create was causing the issue.
           },
       });
 
