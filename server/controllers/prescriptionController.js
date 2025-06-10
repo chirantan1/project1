@@ -38,13 +38,20 @@ exports.createPrescription = async (req, res) => { // Changed from export const 
 // @access  Private/Doctor
 exports.sendPrescriptionEmail = async (req, res) => { // Changed from export const to exports.
     try {
-        // --- Debugging Multer file status ---
-        console.log('req.file status:', req.file); // IMPORTANT: Check this in your backend logs!
-        console.log('req.body status:', req.body); // IMPORTANT: Check this in your backend logs!
+        // --- IMPORTANT DEBUGGING LOGS FOR MULTER AND REQUEST ---
+        console.log('\n--- Inside sendPrescriptionEmail Controller ---');
+        console.log('Request Headers Content-Type:', req.headers['content-type']); // Should be multipart/form-data
+        console.log('req.file (Multer processed file data):', req.file); // Should contain file details if uploaded
+        console.log('req.body (Multer processed form fields):', req.body); // Should contain patientEmail, doctorName etc.
+        console.log('--------------------------------------------\n');
 
         // Multer places the file in req.file when using upload.single()
         if (!req.file) {
-            return res.status(400).json({ success: false, message: 'No PDF file uploaded. Multer might not be configured correctly or file is missing.' });
+            // Refined message to guide the user to the likely source of the problem
+            return res.status(400).json({ 
+                success: false, 
+                message: 'No PDF file uploaded. This usually means Multer middleware (e.g., `upload.single(\'prescription\')`) is not correctly applied in the route definition (routes/prescriptions.js) or the frontend is not sending FormData properly.' 
+            });
         }
 
         const { patientEmail, patientName, doctorName, diagnosis, medicines, dosage, instructions, followUpDate, doctorSpecialization, clinicName, clinicAddress, clinicPhone } = req.body;
