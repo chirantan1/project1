@@ -22,10 +22,11 @@ const protect = async (req, res, next) => {
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
             // Find the user by ID from the decoded token payload and exclude the password field
-            req.user = await User.findById(decoded.id).select('-password');
+            // Ensure that the 'role' field is included in the selection if it's not default
+            req.user = await User.findById(decoded.id).select('-password role'); 
 
             // Log user role for debugging
-            console.log('User role from token (in protect):', req.user ? req.user.role : 'User not found');
+            console.log('User from token (in protect):', req.user); // Log the entire user object for more context
 
             // If no user is found with the ID from the token (e.g., user deleted)
             if (!req.user) {
@@ -62,8 +63,10 @@ const authorize = (...roles) => {
             return res.status(500).json({ success: false, message: 'User not attached to request. Ensure `protect` middleware runs first.' });
         }
 
-        // Convert the user's role to lowercase for case-insensitive comparison
-        const userRole = req.user.role.toLowerCase();
+        // Safely convert the user's role to lowercase for case-insensitive comparison
+        // Use a default empty string if req.user.role is null or undefined
+        const userRole = (req.user.role || '').toLowerCase(); // FIX: Added `|| ''` to handle null/undefined role
+
         // Convert all allowed roles to lowercase for comparison
         const allowedRoles = roles.map(role => role.toLowerCase());
 
