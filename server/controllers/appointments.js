@@ -1,38 +1,63 @@
 // server/controllers/appointments.js
 const Appointment = require('../models/Appointment');
 const User = require('../models/User');
-const { validationResult } = require('express-validator'); // Import validationResult
+const { validationResult } = require('express-validator');
+const moment = require('moment'); // Added for better date handling
+
+// Helper function to validate time format
+const isValidTimeFormat = (time) => {
+    // This regex ensures HH:MM format (00-23 for hour, 00-59 for minute)
+    return /^([01]\d|2[0-3]):([0-5]\d)$/.test(time);
+};
 
 // @desc    Create appointment
 // @route   POST /api/appointments
 // @access  Private (Patient)
 exports.createAppointment = async (req, res) => {
-    // --- START: express-validator error handling ---
+    // Enhanced validation error handling from express-validator
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        console.error('Validation errors for createAppointment (express-validator):', errors.array());
+        console.error('Validation errors for createAppointment (express-validator):', {
+            body: req.body, // Log the full request body if validation fails
+            errors: errors.array()
+        });
         return res.status(400).json({
             success: false,
-            message: 'Invalid input data for appointment.', // Generic message
-            errors: errors.array() // Send detailed validation errors to frontend
+            message: 'Validation failed', // Generic message, details in 'errors'
+            errors: errors.array()
         });
     }
-    // --- END: express-validator error handling ---
 
     try {
         const { doctorId, date, time, symptoms } = req.body;
 
-        // --- ADDED FOR DEBUGGING: Check 'time' value right after destructuring req.body ---
-        console.log('--- DEBUGGING TIME VALUE ---');
-        console.log('Value of time received from req.body:', time);
-        console.log('Type of time received:', typeof time);
+        // --- CRUCIAL DEBUGGING LOGS: What value does 'time' actually have? ---
+        console.log('--- DEBUGGING APPOINTMENT CREATION DATA ---');
+        console.log('Received doctorId:', doctorId);
+        console.log('Received date:', date);
+        console.log('Received time:', `'${time}'`); // Log with quotes to see if it's empty string
+        console.log('Type of time:', typeof time);
+        console.log('Received symptoms:', symptoms);
         console.log('--- END DEBUGGING ---');
 
-        // Basic check for required fields (can be redundant if express-validator is exhaustive)
+
+        // --- Manual Validations (can be partially redundant with express-validator, but good as a fallback) ---
+
+        // Basic check for required fields. `express-validator` should ideally catch this.
         if (!doctorId || !date || !time || !symptoms) {
+            console.warn('Manual basic validation triggered: Missing required fields.');
             return res.status(400).json({
                 success: false,
                 message: 'Please provide doctor ID, date, time, and symptoms for the appointment.'
+            });
+        }
+
+        // Additional validation for time format (redundant if express-validator's .matches() is active)
+        if (!isValidTimeFormat(time)) {
+            console.warn('Manual time format validation failed for:', time);
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid time format. Please use HH:MM (24-hour format), e.g., 09:00 or 14:30.'
             });
         }
 
@@ -45,49 +70,85 @@ exports.createAppointment = async (req, res) => {
             });
         }
 
-        // Parse the date string into a Date object for comparison and storage
-        const appointmentDate = new Date(date);
-        const appointmentTime = time; // Time should be HH:MM string from express-validator
+        // Parse and validate date using moment.js
+        const appointmentDate = moment(date, 'YYYY-MM-DD', true); // 'true' for strict parsing
+        if (!appointmentDate.isValid()) {
+            console.warn('Moment.js date validation failed for:', date);
+            return res.status(400).json({
+                success: false,
+                message: 'Invalid date format. Please use YYYY-MM-DD (e.g., 2025-06-10).'
+            });
+        }
+
+        // Check if date is in the past (using moment.js)
+        // Using moment().startOf('day') to compare against the start of the current day
+        if (appointmentDate.isBefore(moment().startOf('day'))) {
+            return res.status(400).json({
+                success: false,
+                message: 'Cannot book appointments for past dates. Please select a future date.'
+            });
+        }
+
+        // --- End Manual Validations ---
+
 
         // Check if appointment slot is already booked for this doctor on this date and time
         const existingAppointment = await Appointment.findOne({
             doctor: doctorId,
-            date: appointmentDate,
-            time: appointmentTime,
+            date: appointmentDate.toDate(), // Convert moment object to native Date
+            time: time,
             status: { $in: ['pending', 'confirmed'] } // Only consider pending or confirmed as booked
         });
 
         if (existingAppointment) {
             return res.status(400).json({
                 success: false,
-                message: 'This time slot is already booked for the selected doctor.'
+                message: 'This time slot is already booked for the selected doctor. Please choose another time or date.'
             });
         }
 
-        // Create the new appointment
+        // Create the appointment
         const appointment = await Appointment.create({
             doctor: doctorId,
             patient: req.user.id, // req.user.id should be set by your authentication middleware
-            date: appointmentDate,
-            time: appointmentTime, // This is the 'time' variable passed to Mongoose
+            date: appointmentDate.toDate(), // Save as native Date object
+            time: time, // Save as HH:MM string
             symptoms,
             status: 'pending' // New appointments are always pending initially
         });
 
         res.status(201).json({
             success: true,
+            message: 'Appointment booked successfully!',
             data: appointment
         });
+
     } catch (err) {
-        console.error('Error in createAppointment:', err.message);
-        if (err.name === 'CastError') { // Mongoose CastError for invalid IDs
-            return res.status(400).json({ success: false, message: `Invalid ID format for ${err.path}.` });
+        console.error('Catch block - Error in createAppointment:', {
+            error: err.message,
+            name: err.name,
+            stack: err.stack, // Full stack trace for deeper debugging
+            requestBody: req.body // Log request body for context
+        });
+
+        if (err.name === 'CastError') { // Mongoose CastError (e.g., invalid ObjectId)
+            return res.status(400).json({
+                success: false,
+                message: `Invalid ID format for ${err.path}. Please check the provided ID.`
+            });
         }
-        if (err.name === 'ValidationError') { // Mongoose validation errors
+
+        if (err.name === 'ValidationError') { // Mongoose validation errors (e.g., required, match)
             const messages = Object.values(err.errors).map(val => val.message);
-            console.error('Mongoose Validation Error (details):', err.errors); // Log full error details for debugging
-            return res.status(400).json({ success: false, message: messages.join(', '), errors: err.errors });
+            console.error('Mongoose Validation Error Details:', err.errors); // Log full Mongoose error details
+            return res.status(400).json({
+                success: false,
+                message: messages.join('; ') || 'Appointment validation failed during database save.',
+                errors: err.errors // Send full Mongoose errors object to frontend
+            });
         }
+
+        // Generic server error
         res.status(500).json({
             success: false,
             message: 'Server Error: Could not create appointment. Please try again later.'
@@ -111,6 +172,9 @@ exports.getPatientAppointments = async (req, res) => {
         });
     } catch (err) {
         console.error('Error in getPatientAppointments:', err.message);
+        if (err.name === 'CastError') {
+            return res.status(400).json({ success: false, message: 'Invalid patient ID format.' });
+        }
         res.status(500).json({
             success: false,
             message: 'Server Error: Could not retrieve patient appointments.'
@@ -134,6 +198,9 @@ exports.getDoctorAppointments = async (req, res) => {
         });
     } catch (err) {
         console.error('Error in getDoctorAppointments:', err.message);
+        if (err.name === 'CastError') {
+            return res.status(400).json({ success: false, message: 'Invalid doctor ID format.' });
+        }
         res.status(500).json({
             success: false,
             message: 'Server Error: Could not retrieve doctor appointments.'
@@ -318,15 +385,21 @@ exports.getAvailableSlots = async (req, res) => {
         }
 
         // Convert the query date string to a Date object (start of the day)
-        const queryDate = new Date(date);
-        queryDate.setHours(0, 0, 0, 0); // Normalize to start of the day for range query
+        const queryDate = moment(date, 'YYYY-MM-DD', true).startOf('day'); // Use moment for parsing and startOf('day')
+        if (!queryDate.isValid()) {
+             return res.status(400).json({
+                success: false,
+                message: 'Invalid date format for availability. Please use YYYY-MM-DD.'
+             });
+        }
+
 
         // Get all appointments for this doctor on this specific day
         const appointments = await Appointment.find({
             doctor: doctorId,
             date: {
-                $gte: queryDate, // Greater than or equal to the start of the day
-                $lt: new Date(queryDate.getTime() + 24 * 60 * 60 * 1000) // Less than the start of the next day
+                $gte: queryDate.toDate(), // Greater than or equal to the start of the day
+                $lt: moment(queryDate).add(1, 'days').toDate() // Less than the start of the next day
             },
             status: { $in: ['pending', 'confirmed'] } // Only consider pending or confirmed as booked
         });
@@ -369,6 +442,17 @@ exports.getAvailableSlots = async (req, res) => {
 // @route   PUT /api/appointments/:id
 // @access  Private (Patient only)
 exports.updateAppointment = async (req, res) => {
+    // Basic validation for update fields
+    const errors = validationResult(req); // Assuming you'd have validation for update too
+    if (!errors.isEmpty()) {
+        console.error('Validation errors for updateAppointment (express-validator):', errors.array());
+        return res.status(400).json({
+            success: false,
+            message: 'Invalid input data for update.',
+            errors: errors.array()
+        });
+    }
+
     try {
         const { date, time, symptoms } = req.body;
 
@@ -397,13 +481,35 @@ exports.updateAppointment = async (req, res) => {
             });
         }
 
-        // If date or time is being updated, check for new slot availability
-        // Convert date to Date object if provided, otherwise use existing
-        const newDate = date ? new Date(date) : appointment.date;
-        const newTime = time || appointment.time;
+        // Prepare new date and time values, using moment for parsing if date is updated
+        let newDate = appointment.date;
+        if (date !== undefined) {
+            const parsedDate = moment(date, 'YYYY-MM-DD', true);
+            if (!parsedDate.isValid()) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid date format for update. Please use YYYY-MM-DD.'
+                });
+            }
+            newDate = parsedDate.toDate();
+        }
+        
+        let newTime = appointment.time;
+        if (time !== undefined) {
+            if (!isValidTimeFormat(time)) { // Validate time format
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid time format for update. Please use HH:MM (24-hour format).'
+                });
+            }
+            newTime = time;
+        }
 
         // Check for slot availability only if time or date is actually changing
-        if (time !== undefined && (newTime !== appointment.time || (date !== undefined && newDate.toDateString() !== new Date(appointment.date).toDateString()))) {
+        const isTimeChanging = time !== undefined && newTime !== appointment.time;
+        const isDateChanging = date !== undefined && newDate.toDateString() !== appointment.date.toDateString();
+
+        if (isTimeChanging || isDateChanging) {
             const existingAppointment = await Appointment.findOne({
                 doctor: appointment.doctor,
                 date: newDate,
@@ -415,14 +521,14 @@ exports.updateAppointment = async (req, res) => {
             if (existingAppointment) {
                 return res.status(400).json({
                     success: false,
-                    message: 'The requested time slot is already booked for this doctor.'
+                    message: 'The requested time slot is already booked for this doctor. Please choose another time or date.'
                 });
             }
         }
 
-        // Update allowed fields
-        if (date !== undefined) appointment.date = new Date(date); // Ensure date is stored as Date object
-        if (time !== undefined) appointment.time = time;
+        // Update allowed fields only if they are defined in the request body
+        if (date !== undefined) appointment.date = newDate;
+        if (time !== undefined) appointment.time = newTime;
         if (symptoms !== undefined) appointment.symptoms = symptoms;
 
         await appointment.save();
