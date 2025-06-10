@@ -1,9 +1,9 @@
 // server/server.js
-require('dotenv').config(); // Load environment variables from .env file immediately
+require('dotenv').config(); // Load environment variables from .env file immediately at the very top
 
 const express = require('express');
 const cors = require('cors');
-const mongoose = require('mongoose'); // Mongoose is directly used here
+const mongoose = require('mongoose'); // Mongoose is directly imported, though connectDB handles the connection
 const path = require('path'); // Added for serving static files later if needed
 
 // --- Import Database Connection ---
@@ -12,16 +12,38 @@ const connectDB = require('./config/db'); // IMPORTED: Assuming db.js exports th
 const app = express();
 
 // Connect to MongoDB
-connectDB(); // Call the imported function to establish database connection
+// Added explicit try-catch for database connection at application startup
+const startServer = async () => {
+    try {
+        await connectDB(); // Call the imported function to establish database connection
+        console.log('📦 MongoDB Connected Successfully!');
+    } catch (err) {
+        console.error('❌ MongoDB Connection Failed:', err.message);
+        // Exit process with failure
+        process.exit(1);
+    }
+};
+startServer(); // Invoke the function to connect to DB and start the server
 
-// --- CORS Configuration (TEMPORARILY SIMPLIFIED FOR DEBUGGING) ---
-// This allows requests from *any* origin.
-// If this works, the issue is with your custom 'origin' logic in the previous setup.
-// If it still doesn't work, the 'cors' middleware itself might not be running correctly.
+// --- CORS Configuration ---
+// For development, allowing all origins is common.
+// In production, **ALWAYS** restrict this to your frontend application's domain(s) for security.
+// Example for production:
+// const allowedOrigins = ['https://yourfrontend.com', 'http://localhost:3000'];
+// app.use(cors({
+//     origin: function (origin, callback) {
+//         if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+//             callback(null, true);
+//         } else {
+//             callback(new Error('Not allowed by CORS'));
+//         }
+//     },
+//     credentials: true, // Allow cookies/authorization headers to be sent cross-origin
+// }));
 app.use(cors({
     credentials: true // Allow cookies/authorization headers to be sent cross-origin
 }));
-// --- END TEMPORARY CORS CONFIGURATION ---
+// --- END CORS CONFIGURATION ---
 
 
 // --- Middleware ---
