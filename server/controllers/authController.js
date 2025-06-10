@@ -111,9 +111,9 @@ const signupUser = async (req, res) => {
                 `;
             }
 
-            // FIX: Changed 'to' back to 'email' to match the provided emailSender.js
+            // FIX: Changed 'email' to 'to' for the recipient's address
             await sendEmail({
-                email: user.email, // Pass the recipient email using the 'email' key
+                to: user.email, // Pass the recipient email using the 'to' key
                 subject: welcomeSubject,
                 html: welcomeHtml,
                 text: `Welcome to our platform, ${name}! Your account has been successfully created as a ${role}.`,
@@ -245,7 +245,7 @@ const forgotPassword = async (req, res) => {
 
         // Send OTP via email using the dedicated utility
         const emailOptions = {
-            email: user.email, // FIX: Changed 'to' back to 'email' for the recipient's address
+            to: user.email, // FIX: Changed 'email' to 'to' for the recipient's address
             subject: "Password Reset OTP for Patient Management System",
             html: `
                 <div style="font-family: Arial, sans-serif; line-height: 1.6;">
