@@ -10,7 +10,7 @@ exports.createAppointment = async (req, res) => {
     // --- START: Added express-validator error handling ---
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        console.error('Validation errors for createAppointment:', errors.array());
+        console.error('Express-validator errors for createAppointment:', errors.array());
         return res.status(400).json({
             success: false,
             message: 'Invalid input data for appointment.', // Generic message
@@ -22,12 +22,22 @@ exports.createAppointment = async (req, res) => {
     try {
         const { doctorId, date, time, symptoms } = req.body;
 
+        // --- NEW DEBUGGING LOGS: EXTREMELY IMPORTANT FOR DIAGNOSIS ---
+        console.log('--- Debugging Appointment Creation Data ---');
+        console.log(`Received doctorId: ${doctorId}`);
+        console.log(`Received date: ${date}`);
+        console.log(`Received time: '${time}' (Type: ${typeof time})`); // <--- THIS IS THE KEY LOG
+        console.log(`Received symptoms: ${symptoms}`);
+        console.log('------------------------------------------');
+        // --- END NEW DEBUGGING LOGS ---
+
         // Your existing basic input validation can be removed or kept as a fallback
         // if express-validator handles these specific checks.
         // For 'required' checks, express-validator's .not().isEmpty() is sufficient.
         // If you keep this, ensure express-validator's messages align.
         // For now, I'll keep it as a redundant check, but it's less necessary with express-validator.
         if (!doctorId || !date || !time || !symptoms) {
+            console.warn('Manual basic validation triggered: One or more fields are null/undefined/empty string:', { doctorId, date, time, symptoms });
             return res.status(400).json({
                 success: false,
                 message: 'Please provide doctor ID, date, time, and symptoms for the appointment.'
@@ -46,7 +56,7 @@ exports.createAppointment = async (req, res) => {
         // Parse the date string into a Date object for comparison
         // express-validator's .toDate() can handle this before it reaches here
         const appointmentDate = new Date(date);
-        const appointmentTime = time; // This is now guaranteed to be HH:MM by express-validator
+        const appointmentTime = time; // This is now guaranteed to be HH:MM by express-validator if it passed
 
         // Check if appointment slot is already booked for this doctor on this date and time
         const existingAppointment = await Appointment.findOne({
@@ -68,7 +78,7 @@ exports.createAppointment = async (req, res) => {
             doctor: doctorId,
             patient: req.user.id, // req.user.id should be set by your authentication middleware
             date: appointmentDate,
-            time: appointmentTime,
+            time: appointmentTime, // Mongoose will validate this 'time' value
             symptoms,
             status: 'pending' // New appointments are always pending initially
         });
@@ -79,6 +89,15 @@ exports.createAppointment = async (req, res) => {
         });
     } catch (err) {
         console.error('Error in createAppointment:', err.message);
+        if (err.name === 'ValidationError') { // Catch Mongoose validation errors specifically
+            const messages = Object.values(err.errors).map(val => val.message);
+            console.error('Mongoose Validation Errors Details:', err.errors); // Log Mongoose specific error details to see WHY it failed
+            return res.status(400).json({
+                success: false,
+                message: messages.join(', ') || 'Appointment validation failed.',
+                errors: err.errors // Send Mongoose validation errors too
+            });
+        }
         // Specifically check for Mongoose CastError if doctorId is malformed before express-validator
         if (err.kind === 'ObjectId') {
             return res.status(400).json({ success: false, message: 'Invalid doctor ID format.' });
