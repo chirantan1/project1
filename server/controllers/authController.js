@@ -103,7 +103,7 @@ const signupUser = async (req, res) => {
                         <h2 style="color: #0056b3;">Welcome, ${name}!</h2>
                         <p>Thank you for registering with our healthcare platform. We're excited to have you on board as a patient.</p>
                         <p>You can now log in to your account and start booking appointments, managing your health records, and connecting with healthcare professionals.</p>
-                        <p>Click here to log in: <a href="${process.env.FRONTEND_URL}/login" style="color: #0056b3; text-decoration: none;">Login to your account</a></p>
+                        <p>Click here to log in: <a href="https://project1-3jvu.onrender.com/login" style="color: #0056b3; text-decoration: none;">Login to your account</a></p>
                         <p>If you have any questions, feel free to contact our support team.</p>
                         <p>Best regards,</p>
                         <p>The Healthcare Platform Team</p>
