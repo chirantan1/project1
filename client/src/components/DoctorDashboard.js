@@ -77,9 +77,9 @@ const DoctorDashboard = () => {
       setSuccess("");
     }, 5000); // Clear messages after 5 seconds
     return () => clearTimeout(timer); // Cleanup on component unmount or re-render
-  }, []);
+  }, []); // clearMessages has no dependencies, so it's very stable
 
-  // --- API Calls (now more independent of `loading` state) ---
+  // --- API Calls (memoized with useCallback) ---
 
   // Fetch user data (doctor's own profile)
   const fetchUserData = useCallback(async () => {
@@ -88,7 +88,7 @@ const DoctorDashboard = () => {
       const response = await api.get("/auth/me");
       setUser(response.data);
       console.log("User data fetched successfully:", response.data);
-      return response.data; // Return data for central loading management
+      return response.data;
     } catch (err) {
       console.error("Error fetching user data:", err);
       if (err.response?.status === 401) {
@@ -99,9 +99,9 @@ const DoctorDashboard = () => {
         setError("Failed to load doctor's profile.");
       }
       clearMessages();
-      throw err; // Re-throw to be caught by the outer async handler
+      throw err;
     }
-  }, [clearMessages, api, navigate]); // Depend on navigate now
+  }, [clearMessages, api, navigate]); // Dependencies are stable
 
   // Fetch appointments for the logged-in doctor
   const fetchAppointments = useCallback(async () => {
@@ -111,7 +111,7 @@ const DoctorDashboard = () => {
       if (response.data?.success) {
         setAppointments(response.data.data || []);
         console.log("Appointments fetched successfully:", response.data.data);
-        return response.data.data; // Return data for central loading management
+        return response.data.data;
       } else {
         setError(response.data?.message || "Failed to load appointments.");
         console.warn("Backend reported success: false or unexpected data for appointments:", response.data);
@@ -128,9 +128,9 @@ const DoctorDashboard = () => {
         setError(err.response?.data?.message || "Failed to load appointments. Network error or server issue.");
       }
       clearMessages();
-      throw err; // Re-throw to be caught by the outer async handler
+      throw err;
     }
-  }, [clearMessages, api, navigate]); // Depend on navigate now
+  }, [clearMessages, api, navigate]); // Dependencies are stable
 
   // Update appointment status (e.g., pending -> confirmed, confirmed -> completed)
   const handleStatusChange = useCallback(
@@ -160,7 +160,7 @@ const DoctorDashboard = () => {
       }
     },
     [fetchAppointments, clearMessages, api]
-  ); // Dependencies for useCallback
+  );
 
   // Submit new prescription
   const submitPrescription = useCallback(
@@ -207,7 +207,7 @@ const DoctorDashboard = () => {
       }
     },
     [prescriptionData, user, clearMessages, api]
-  ); // Dependencies for useCallback
+  );
 
   // --- Event Handlers ---
 
@@ -218,37 +218,34 @@ const DoctorDashboard = () => {
       ...prev,
       [name]: value,
     }));
-  }, []); // No dependencies as it only uses e and prev state
+  }, []);
 
   // Initiates PDF generation for the prescription
   const handleGeneratePdf = useCallback(() => {
-    // Check if a patient is selected before generating PDF
     if (!prescriptionData.patientId) {
       setError("Please select a patient before generating the PDF.");
       clearMessages();
       return;
     }
-    toPDF(); // Triggers react-to-pdf to convert the targetRef content to PDF
+    toPDF();
     setSuccess("Prescription PDF generated!");
     clearMessages();
-  }, [prescriptionData.patientId, toPDF, clearMessages]); // Depend on prescriptionData.patientId
+  }, [prescriptionData.patientId, toPDF, clearMessages]);
 
   // Handles user logout
   const handleLogout = useCallback(() => {
     localStorage.removeItem("token");
-    // No need to explicitly delete header here, interceptor will handle missing token
     navigate("/login");
-  }, [navigate]); // Depend on navigate
+  }, [navigate]);
 
   // --- Effects ---
 
-  // Centralized data fetching on component mount
+  // Primary useEffect for initial data fetching - runs only once on mount
   useEffect(() => {
     console.count("DoctorDashboard useEffect: Initial Fetch Triggered");
     const loadInitialData = async () => {
-      setLoading(true); // Start loading centrally
-      setError(""); // Clear previous errors
-
+      setLoading(true);
+      setError("");
       try {
         // Run both fetches in parallel
         await Promise.all([
@@ -258,16 +255,15 @@ const DoctorDashboard = () => {
         console.log("All initial data fetches completed successfully.");
       } catch (err) {
         console.error("Error during initial data loading:", err);
-        // Errors are already handled by individual fetch functions,
-        // but this catch ensures `finally` runs even if one fails.
+        // Errors are already handled by individual fetch functions
       } finally {
-        setLoading(false); // End loading centrally
+        setLoading(false);
         console.log("Finished all initial data loading.");
       }
     };
 
     loadInitialData();
-  }, [fetchUserData, fetchAppointments]); // Dependencies ensure this runs only when these functions change (which is only on mount due to useCallback)
+  }, []); // Dependency array changed to empty: This effect runs ONCE on component mount.
 
   // Filters appointments whenever `appointments`, `statusFilter`, `searchTerm`, or `selectedDate` changes
   useEffect(() => {
