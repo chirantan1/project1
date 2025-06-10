@@ -12,8 +12,17 @@ const api = axios.create({
 });
 
 const BookAppointment = () => {
+  // Get today's date in YYYY-MM-DD format for the date input's min attribute
+  const getTodayDate = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+    const day = String(today.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   const [formData, setFormData] = useState({
-    date: "",
+    date: getTodayDate(), // Default to today's date
     time: "10:00", // Default time, ensure it matches HH:MM format
     symptoms: "",
   });
@@ -24,6 +33,7 @@ const BookAppointment = () => {
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
+  const [todayDate, setTodayDate] = useState(getTodayDate()); // State for min date attribute
 
   useEffect(() => {
     const fetchDoctorDetails = async () => {
@@ -107,7 +117,10 @@ const BookAppointment = () => {
         setError(true);
       }
     } catch (err) {
-      console.error("Booking error details:", err.response?.data || err.message);
+      // --- START: Enhanced Error Logging ---
+      console.error("Booking error details (from backend):", JSON.stringify(err.response?.data, null, 2));
+      console.error("Booking error (raw Axios error object):", err);
+      // --- END: Enhanced Error Logging ---
 
       if (err.response && err.response.data) {
         const backendResponse = err.response.data;
@@ -172,7 +185,7 @@ const BookAppointment = () => {
             value={formData.date}
             onChange={handleChange}
             required
-            min={new Date().toISOString().split("T")[0]} // Prevents selecting past dates
+            min={todayDate} // Use the calculated today's date
           />
           {validationErrors.date && <p className="error-text">{validationErrors.date}</p>}
         </div>

@@ -10,7 +10,7 @@ exports.createAppointment = async (req, res) => {
     // --- START: express-validator error handling ---
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-        console.error('Validation errors for createAppointment:', errors.array());
+        console.error('Validation errors for createAppointment (express-validator):', errors.array());
         return res.status(400).json({
             success: false,
             message: 'Invalid input data for appointment.', // Generic message
@@ -21,6 +21,12 @@ exports.createAppointment = async (req, res) => {
 
     try {
         const { doctorId, date, time, symptoms } = req.body;
+
+        // --- ADDED FOR DEBUGGING: Check 'time' value right after destructuring req.body ---
+        console.log('--- DEBUGGING TIME VALUE ---');
+        console.log('Value of time received from req.body:', time);
+        console.log('Type of time received:', typeof time);
+        console.log('--- END DEBUGGING ---');
 
         // Basic check for required fields (can be redundant if express-validator is exhaustive)
         if (!doctorId || !date || !time || !symptoms) {
@@ -63,7 +69,7 @@ exports.createAppointment = async (req, res) => {
             doctor: doctorId,
             patient: req.user.id, // req.user.id should be set by your authentication middleware
             date: appointmentDate,
-            time: appointmentTime,
+            time: appointmentTime, // This is the 'time' variable passed to Mongoose
             symptoms,
             status: 'pending' // New appointments are always pending initially
         });
@@ -79,7 +85,8 @@ exports.createAppointment = async (req, res) => {
         }
         if (err.name === 'ValidationError') { // Mongoose validation errors
             const messages = Object.values(err.errors).map(val => val.message);
-            return res.status(400).json({ success: false, message: messages.join(', ') });
+            console.error('Mongoose Validation Error (details):', err.errors); // Log full error details for debugging
+            return res.status(400).json({ success: false, message: messages.join(', '), errors: err.errors });
         }
         res.status(500).json({
             success: false,
