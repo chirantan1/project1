@@ -22,6 +22,7 @@ exports.validateAppointment = [
     // - Must be in HH:MM format (e.g., 09:00, 14:30).
     check('time', 'Time is required and must be in HH:MM format (e.g., 09:00).')
         .not().isEmpty()
+        .trim() // <--- ADDED THIS LINE: Removes whitespace from both ends
         .matches(/^([01]\d|2[0-3]):([0-5]\d)$/), // Regex for HH:MM format
 
     // Validate symptoms:
