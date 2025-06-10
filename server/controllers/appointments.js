@@ -7,6 +7,7 @@ const moment = require('moment'); // Added for better date handling
 // Helper function to validate time format
 const isValidTimeFormat = (time) => {
     // This regex ensures HH:MM format (00-23 for hour, 00-59 for minute)
+    // It specifically requires two digits for both hour and minute (e.g., "09:00", not "9:00")
     return /^([01]\d|2[0-3]):([0-5]\d)$/.test(time);
 };
 
@@ -23,7 +24,7 @@ exports.createAppointment = async (req, res) => {
         });
         return res.status(400).json({
             success: false,
-            message: 'Validation failed', // Generic message, details in 'errors'
+            message: 'Validation failed: Invalid input data for appointment.', // Generic message, details in 'errors'
             errors: errors.array()
         });
     }
@@ -35,7 +36,7 @@ exports.createAppointment = async (req, res) => {
         console.log('--- DEBUGGING APPOINTMENT CREATION DATA ---');
         console.log('Received doctorId:', doctorId);
         console.log('Received date:', date);
-        console.log('Received time:', `'${time}'`); // Log with quotes to see if it's empty string
+        console.log('Received time:', `'${time}'`); // Log with quotes to see if it's empty string or specific value
         console.log('Type of time:', typeof time);
         console.log('Received symptoms:', symptoms);
         console.log('--- END DEBUGGING ---');
@@ -443,7 +444,9 @@ exports.getAvailableSlots = async (req, res) => {
 // @access  Private (Patient only)
 exports.updateAppointment = async (req, res) => {
     // Basic validation for update fields
-    const errors = validationResult(req); // Assuming you'd have validation for update too
+    // Assuming you'd have validation for update too. If using express-validator,
+    // ensure the middleware is applied to this route in your appointments.js route file.
+    const errors = validationResult(req); 
     if (!errors.isEmpty()) {
         console.error('Validation errors for updateAppointment (express-validator):', errors.array());
         return res.status(400).json({
