@@ -65,10 +65,11 @@ const authorize = (...roles) => {
 
         // Safely convert the user's role to lowercase for case-insensitive comparison
         // Use a default empty string if req.user.role is null or undefined
-        const userRole = (req.user.role || '').toLowerCase(); // FIX: Added `|| ''` to handle null/undefined role
+        const userRole = (req.user.role || '').toLowerCase(); 
 
-        // Convert all allowed roles to lowercase for comparison
-        const allowedRoles = roles.map(role => role.toLowerCase());
+        // Convert all allowed roles to lowercase for comparison.
+        // Added String(role) to ensure `role` is a string before `toLowerCase()`.
+        const allowedRoles = roles.map(role => (String(role) || '').toLowerCase()); // FIX: Safely convert each role to string
 
         console.log('User role being checked (in authorize):', userRole);
         console.log('Allowed roles for this route:', allowedRoles);
