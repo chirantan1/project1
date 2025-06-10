@@ -21,12 +21,15 @@ const protect = async (req, res, next) => {
             // Verify the token using the JWT_SECRET from environment variables
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-            // Find the user by ID from the decoded token payload and exclude the password field
-            // Ensure that the 'role' field is included in the selection if it's not default
-            req.user = await User.findById(decoded.id).select('-password role'); 
+            // Find the user by ID from the decoded token payload.
+            // FIX: Changed .select('-password role') to .select('name email role')
+            // You cannot mix inclusion and exclusion in the same .select() statement.
+            // By explicitly including 'name', 'email', 'role', Mongoose will return only these
+            // fields along with the default '_id', implicitly excluding 'password' and others.
+            req.user = await User.findById(decoded.id).select('name email role'); 
 
-            // Log user role for debugging
-            console.log('User from token (in protect):', req.user); // Log the entire user object for more context
+            // Log user for debugging. Be cautious with logging sensitive data in production.
+            console.log('User from token (in protect):', req.user); 
 
             // If no user is found with the ID from the token (e.g., user deleted)
             if (!req.user) {
@@ -69,7 +72,7 @@ const authorize = (...roles) => {
 
         // Convert all allowed roles to lowercase for comparison.
         // Added String(role) to ensure `role` is a string before `toLowerCase()`.
-        const allowedRoles = roles.map(role => (String(role) || '').toLowerCase()); // FIX: Safely convert each role to string
+        const allowedRoles = roles.map(role => (String(role) || '').toLowerCase()); 
 
         console.log('User role being checked (in authorize):', userRole);
         console.log('Allowed roles for this route:', allowedRoles);
