@@ -3,6 +3,20 @@ const nodemailer = require('nodemailer');
 require('dotenv').config(); // Load environment variables from .env file
 
 const sendEmail = async (options) => {
+    // --- NEW DEBUGGING LOG ---
+    console.log('\n--- Inside sendEmail Utility ---');
+    console.log('Email options received:', {
+        to: options.to,
+        subject: options.subject,
+        hasHtml: !!options.html,
+        hasText: !!options.text,
+        attachmentsCount: (options.attachments || []).length,
+        // Do NOT log the content of attachments (pdfBuffer) directly here as it can be very large
+        // Just log the count and filename to confirm existence
+        attachmentFilenames: (options.attachments || []).map(att => att.filename)
+    });
+    console.log('------------------------------\n');
+
     // Validate required options for email sending
     if (!options.to || !options.subject || (!options.html && !options.text)) {
         console.error('Error: Missing required email options (to, subject, html/text).');
