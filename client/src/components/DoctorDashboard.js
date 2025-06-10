@@ -915,13 +915,7 @@ const DoctorDashboard = () => {
             </div>
 
             <div className="modal-actions">
-              <button
-                onClick={submitPrescription}
-                className="save-prescription-btn"
-                disabled={loading}
-              >
-                Save Prescription
-              </button>
+              
               <button
                 onClick={handleGeneratePdf}
                 className="generate-btn"
