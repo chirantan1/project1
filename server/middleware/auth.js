@@ -10,38 +10,41 @@ const User = require('../models/User'); // Ensure correct path to your User mode
  * @param {Function} next - Express next middleware function
  */
 const protect = async (req, res, next) => {
-  let token;
+    let token;
 
-  // Check if authorization header exists and starts with 'Bearer'
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-    try {
-      // Extract the token from the 'Bearer <token>' string
-      token = req.headers.authorization.split(' ')[1];
+    // Check if authorization header exists and starts with 'Bearer'
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+        try {
+            // Extract the token from the 'Bearer <token>' string
+            token = req.headers.authorization.split(' ')[1];
 
-      // Verify the token using the JWT_SECRET from environment variables
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            // Verify the token using the JWT_SECRET from environment variables
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-      // Find the user by ID from the decoded token payload and exclude the password field
-      req.user = await User.findById(decoded.id).select('-password');
-      
-      // If no user is found with the ID from the token (e.g., user deleted)
-      if (!req.user) {
-        return res.status(401).json({ success: false, message: 'Not authorized, user not found' });
-      }
+            // Find the user by ID from the decoded token payload and exclude the password field
+            req.user = await User.findById(decoded.id).select('-password');
 
-      // Proceed to the next middleware or route handler
-      next();
-    } catch (error) {
-      // Handle various token verification errors (e.g., expired, invalid signature)
-      console.error('Token verification error:', error.message);
-      return res.status(401).json({ success: false, message: 'Not authorized, token failed' });
+            // Log user role for debugging
+            console.log('User role from token (in protect):', req.user ? req.user.role : 'User not found');
+
+            // If no user is found with the ID from the token (e.g., user deleted)
+            if (!req.user) {
+                return res.status(401).json({ success: false, message: 'Not authorized, user not found' });
+            }
+
+            // Proceed to the next middleware or route handler
+            next();
+        } catch (error) {
+            // Handle various token verification errors (e.g., expired, invalid signature)
+            console.error('Token verification error:', error.message);
+            return res.status(401).json({ success: false, message: 'Not authorized, token failed' });
+        }
     }
-  }
 
-  // If no token was found in the header
-  if (!token) {
-    return res.status(401).json({ success: false, message: 'Not authorized, no token provided' });
-  }
+    // If no token was found in the header
+    if (!token) {
+        return res.status(401).json({ success: false, message: 'Not authorized, no token provided' });
+    }
 };
 
 /**
@@ -53,26 +56,34 @@ const protect = async (req, res, next) => {
  * @returns {Function} Express middleware function
  */
 const authorize = (...roles) => {
-  return (req, res, next) => {
-    // Ensure `req.user` is available from the `protect` middleware
-    if (!req.user) {
-      return res.status(500).json({ success: false, message: 'User not attached to request. Ensure `protect` middleware runs first.' });
-    }
+    return (req, res, next) => {
+        // Ensure `req.user` is available from the `protect` middleware
+        if (!req.user) {
+            return res.status(500).json({ success: false, message: 'User not attached to request. Ensure `protect` middleware runs first.' });
+        }
 
-    // Check if the authenticated user's role is in the list of allowed roles
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        message: `User role '${req.user.role}' is not authorized to access this resource`
-      });
-    }
-    // If authorized, proceed to the next middleware or route handler
-    next();
-  };
+        // Convert the user's role to lowercase for case-insensitive comparison
+        const userRole = req.user.role.toLowerCase();
+        // Convert all allowed roles to lowercase for comparison
+        const allowedRoles = roles.map(role => role.toLowerCase());
+
+        console.log('User role being checked (in authorize):', userRole);
+        console.log('Allowed roles for this route:', allowedRoles);
+
+        // Check if the authenticated user's role is in the list of allowed roles
+        if (!allowedRoles.includes(userRole)) {
+            return res.status(403).json({
+                success: false,
+                message: `User role '${req.user.role}' is not authorized to access this resource`
+            });
+        }
+        // If authorized, proceed to the next middleware or route handler
+        next();
+    };
 };
 
 // Export the middleware functions
 module.exports = {
-  protect,
-  authorize // Export authorize instead of a specific 'admin' middleware
+    protect,
+    authorize
 };

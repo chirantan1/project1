@@ -1,7 +1,9 @@
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState, useCallback, useRef } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-import { usePDF } from "react-to-pdf"; // For client-side PDF generation
+import { usePDF } from "react-to-pdf"; // For client-side PDF generation (download)
+import html2canvas from 'html2canvas'; // For converting HTML to canvas/image
+import { jsPDF } from 'jspdf'; // For creating PDF from canvas/image
 import "./DoctorDashboard.css"; // Ensure your CSS is robust
 
 const DoctorDashboard = () => {
@@ -29,7 +31,7 @@ const DoctorDashboard = () => {
   });
 
   const navigate = useNavigate();
-  // usePDF hook for generating PDF from HTML content
+  // usePDF hook for generating PDF for download
   const { toPDF, targetRef } = usePDF({ filename: "medical-prescription.pdf" });
 
   // --- Axios Instance Configuration ---
@@ -162,7 +164,7 @@ const DoctorDashboard = () => {
     [fetchAppointments, clearMessages, api]
   );
 
-  // Submit new prescription
+  // Submit new prescription to save it in the database
   const submitPrescription = useCallback(
     async () => {
       if (!prescriptionData.patientId || !prescriptionData.medicines) {
@@ -183,16 +185,8 @@ const DoctorDashboard = () => {
 
         if (response.data.success) {
           setSuccess("Prescription saved successfully!");
-          setShowPrescriptionForm(false); // Close the form
-          // Reset prescription form data
-          setPrescriptionData({
-            patientId: "",
-            medicines: "",
-            dosage: "",
-            instructions: "",
-            followUpDate: "",
-            diagnosis: "",
-          });
+          // Do not close form here, let the user decide if they want to email or just save
+          // setPrescriptionData will reset form data, which is done later
           clearMessages();
         } else {
           setError(response.data.message || "Failed to save prescription.");
@@ -220,17 +214,140 @@ const DoctorDashboard = () => {
     }));
   }, []);
 
-  // Initiates PDF generation for the prescription
+  // Initiates PDF generation for local download
   const handleGeneratePdf = useCallback(() => {
     if (!prescriptionData.patientId) {
       setError("Please select a patient before generating the PDF.");
       clearMessages();
       return;
     }
-    toPDF();
-    setSuccess("Prescription PDF generated!");
+    toPDF(); // Triggers react-to-pdf to convert the targetRef content to PDF and download
+    setSuccess("Prescription PDF generated for download!");
     clearMessages();
   }, [prescriptionData.patientId, toPDF, clearMessages]);
+
+  // Gets the full patient object for the currently selected patient in the prescription form
+  // Changed from useCallback to a regular function to avoid initialization issues
+  const getSelectedPatient = () => {
+    return appointments.find(
+      (a) => a.patient?._id === prescriptionData.patientId
+    )?.patient;
+  };
+
+
+  // Initiates PDF generation and sends it via email
+  const handleSendEmail = useCallback(async () => {
+    if (!prescriptionData.patientId) {
+      setError("Please select a patient before sending the email.");
+      clearMessages();
+      return;
+    }
+    // Ensure patient has an email to send the prescription
+    const patient = getSelectedPatient();
+    if (!patient || !patient.email) {
+      setError("Selected patient does not have an email address to send the prescription.");
+      clearMessages();
+      return;
+    }
+
+    if (!targetRef.current) { // Using targetRef as it's already linked to the preview div
+      setError("Prescription content not found for PDF generation.");
+      clearMessages();
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      // 1. Capture the content of the ref as a canvas
+      const canvas = await html2canvas(targetRef.current, {
+        scale: 2, // Increase scale for better quality PDF
+        useCORS: true, // Important if you have images from other origins
+      });
+
+      // 2. Convert canvas to an image data URL
+      const imgData = canvas.toDataURL('image/png');
+
+      // 3. Create a new jsPDF instance
+      const pdf = new jsPDF('p', 'mm', 'a4'); // 'p' for portrait, 'mm' for millimeters, 'a4' size
+      const imgWidth = 210; // A4 width in mm
+      const pageHeight = 297; // A4 height in mm
+      const imgHeight = canvas.height * imgWidth / canvas.width;
+      let heightLeft = imgHeight;
+
+      let position = 0;
+
+      // Add first page
+      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+      heightLeft -= pageHeight;
+
+      // Add additional pages if content overflows A4 height
+      while (heightLeft >= 0) {
+          position = heightLeft - pageHeight; // Corrected position for multi-page
+          pdf.addPage();
+          pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
+          heightLeft -= pageHeight;
+      }
+
+      // 4. Get the PDF as a Blob
+      const pdfBlob = pdf.output('blob');
+
+      // 5. Create FormData and append the PDF Blob and other necessary data
+      const formData = new FormData();
+      // 'prescription' is the field name expected by Multer on the backend
+      formData.append('prescription', pdfBlob, `prescription_${patient?.name || 'unknown'}_${new Date().toISOString().slice(0,10)}.pdf`);
+      
+      // Append other data that the backend might need for email content
+      formData.append('patientEmail', patient.email); // Crucial for sending email
+      formData.append('patientName', patient.name || 'Unknown Patient');
+      formData.append('doctorName', user?.name || 'Doctor');
+      formData.append('doctorSpecialization', user?.specialization || 'General Physician');
+      formData.append('diagnosis', prescriptionData.diagnosis || '');
+      formData.append('medicines', prescriptionData.medicines || '');
+      formData.append('dosage', prescriptionData.dosage || '');
+      formData.append('instructions', prescriptionData.instructions || '');
+      formData.append('followUpDate', prescriptionData.followUpDate || '');
+      // Add clinic info as well if the backend uses it for the email template
+      formData.append('clinicName', 'Healthcare Clinic');
+      formData.append('clinicAddress', 'Adisaptogram, Hooghly');
+      formData.append('clinicPhone', '6294505905');
+
+
+      // 6. Send to backend
+      const response = await api.post("/prescriptions/send-email", formData, {
+          headers: {
+              // Axios automatically sets Content-Type to 'multipart/form-data' for FormData
+              // No need to set it manually unless there's a specific issue
+          },
+      });
+
+      if (response.data.success) {
+          setSuccess("Prescription email sent successfully!");
+          setShowPrescriptionForm(false); // Close form after successful email
+          // Reset prescription form data
+          setPrescriptionData({
+            patientId: "",
+            medicines: "",
+            dosage: "",
+            instructions: "",
+            followUpDate: "",
+            diagnosis: "",
+          });
+      } else {
+          setError(response.data.message || "Failed to send prescription email.");
+      }
+      clearMessages();
+    } catch (err) {
+      console.error("Send email error:", err.response?.data || err.message || err);
+      setError(err.response?.data?.message || "Failed to send prescription email. Please ensure patient has an email.");
+      clearMessages();
+    } finally {
+      setLoading(false);
+    }
+  }, [prescriptionData, user, clearMessages, api, targetRef, getSelectedPatient]); // Added getSelectedPatient to dependencies
+
 
   // Handles user logout
   const handleLogout = useCallback(() => {
@@ -312,13 +429,6 @@ const DoctorDashboard = () => {
   }, [appointments, statusFilter, searchTerm, selectedDate]);
 
   // --- Helper Functions for Rendering ---
-
-  // Gets the full patient object for the currently selected patient in the prescription form
-  const getSelectedPatient = useCallback(() => {
-    return appointments.find(
-      (a) => a.patient?._id === prescriptionData.patientId
-    )?.patient;
-  }, [appointments, prescriptionData.patientId]);
 
   // Pagination logic
   const paginatedAppointments = filteredAppointments.slice(
@@ -802,7 +912,14 @@ const DoctorDashboard = () => {
                 className="generate-btn"
                 disabled={!prescriptionData.patientId} // Disable if no patient is selected
               >
-                Generate PDF
+                Download PDF
+              </button>
+              <button
+                onClick={handleSendEmail}
+                className="send-email-btn"
+                disabled={loading || !prescriptionData.patientId || !getSelectedPatient()?.email} // Disable if no patient or no email
+              >
+                Send via Email
               </button>
 
               <button
@@ -820,3 +937,4 @@ const DoctorDashboard = () => {
 };
 
 export default DoctorDashboard;
+
