@@ -14,30 +14,14 @@ const app = express();
 // Connect to MongoDB
 connectDB(); // Call the imported function to establish database connection
 
-// --- CORS Configuration ---
-// Define allowed origins for your frontend applications
-const allowedOrigins = [
-    'http://localhost:3000', // Your main development frontend
-    'http://192.168.56.1:3000', // Potential local network access
-    'https://project1-3jvu.onrender.com', // Your deployed frontend (main app)
-    'https://disease-assistance-web.onrender.com', // AI Assistant frontend
-    'https://admin-1-5zv8.onrender.com' // External Admin Portal frontend
-];
-
-// More robust CORS setup, ensuring the origin is explicitly allowed or for non-browser requests
+// --- CORS Configuration (TEMPORARILY SIMPLIFIED FOR DEBUGGING) ---
+// This allows requests from *any* origin.
+// If this works, the issue is with your custom 'origin' logic in the previous setup.
+// If it still doesn't work, the 'cors' middleware itself might not be running correctly.
 app.use(cors({
-    origin: (origin, callback) => {
-        // Allow requests with no origin (e.g., from Postman, curl, mobile apps)
-        // or if the origin is in our allowed list.
-        if (!origin || allowedOrigins.includes(origin)) {
-            callback(null, true);
-        } else {
-            console.warn(`❌ CORS: Request from disallowed origin: ${origin}`);
-            callback(new Error(`Not allowed by CORS: ${origin}`));
-        }
-    },
     credentials: true // Allow cookies/authorization headers to be sent cross-origin
 }));
+// --- END TEMPORARY CORS CONFIGURATION ---
 
 
 // --- Middleware ---
